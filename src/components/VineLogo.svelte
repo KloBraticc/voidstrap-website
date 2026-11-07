@@ -592,7 +592,6 @@
       const n = t.length;
       if (n < 2) return;
       const i = (a, o) => [(a[0] + o[0]) / 2, (a[1] + o[1]) / 2];
-      s.beginPath();
       if (e) {
         const a = i(t[n - 1], t[0]);
         s.moveTo(a[0], a[1]);
@@ -611,20 +610,38 @@
       }
     }
 
+    pen(kind, color, width) {
+      if (this.penKind === kind && this.penColor === color && this.penWidth === width) return;
+      this.flush();
+      this.penKind = kind;
+      this.penColor = color;
+      this.penWidth = width;
+      this.g.beginPath();
+    }
+
+    flush() {
+      const g = this.g;
+      if (this.penKind === 1) {
+        g.fillStyle = this.penColor;
+        g.fill();
+      } else if (this.penKind === 2) {
+        g.strokeStyle = this.penColor;
+        g.lineWidth = this.penWidth;
+        g.stroke();
+      }
+      this.penKind = 0;
+    }
+
     fill(t, e) {
+      if (t.length < 2) return;
+      this.pen(1, e, 0);
       this.path(t, true);
-      this.g.fillStyle = e;
-      this.g.fill();
     }
 
     stroke(t, e, s) {
-      const n = this.g;
+      if (t.length < 2) return;
+      this.pen(2, e, s);
       this.path(t, false);
-      n.strokeStyle = e;
-      n.lineWidth = s;
-      n.lineCap = "round";
-      n.lineJoin = "round";
-      n.stroke();
     }
 
     strokeRange(t, e, s, n, i) {
@@ -877,6 +894,7 @@
         }
       };
       c(0);
+      this.flush();
       const l = this.g;
       l.font = `700 ${e}px ${this.cfg.fontFamily}`;
       l.textAlign = "center";
@@ -886,6 +904,7 @@
         if (h.ch !== " " && !h.dead) l.fillText(h.ch, h.x, h.y);
       }
       c(1);
+      this.flush();
     }
 
     colors() {
@@ -918,6 +937,9 @@
       const n = this.g;
       n.setTransform(this.dpr, 0, 0, this.dpr, this.offset * this.dpr, 0);
       n.clearRect(-this.offset, 0, this.surfaceWidth, this.H);
+      n.lineCap = "round";
+      n.lineJoin = "round";
+      this.penKind = 0;
       this.render(t);
       const i = this.Sd;
       const a = t - this.lastKey < 500 || Math.floor(t / 530) % 2 === 0;
