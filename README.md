@@ -67,6 +67,7 @@ Then open `http://localhost:8080`. Set `PORT` to use a different port.
 | `public/install.sh` | The Linux quick installer |
 | `public/quick-install.ps1` | The Windows quick installer |
 | `server` | The Rust preview server |
+| `wiki` | The [wiki](https://wiki.voidstrapp.pages.dev), built with Astro Starlight |
 
 ## Security
 

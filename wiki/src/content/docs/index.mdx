@@ -1,0 +1,27 @@
+---
+title: Welcome to the Voidstrap Wiki!
+description: Install Voidstrap, learn how it works, fix problems, and build it yourself.
+template: splash
+head:
+  - tag: title
+    content: Voidstrap Wiki
+hero:
+  image:
+    html: '<img src="/hero.webp" width="1180" height="880" alt="The Voidstrap app" fetchpriority="high" decoding="async" />'
+  tagline: All the Voidstrap docs, in one place.
+  actions:
+    - text: Get started
+      link: /start/install/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/KloBraticc/Voidstrap
+      variant: minimal
+      icon: github
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+<CardGrid>
+	<LinkCard title="Install Voidstrap" description="Get set up on Windows, Linux or macOS" href="/start/install/" />
+	<LinkCard title="Feature tour" description="Everything Voidstrap can do, with pictures" href="/features/overview/" />
+</CardGrid>
