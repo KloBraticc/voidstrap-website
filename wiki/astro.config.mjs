@@ -56,7 +56,10 @@ export default defineConfig({
 				},
 				{
 					label: 'Guides',
-					items: [{ label: 'Connect an AI client', slug: 'guides/mcp' }],
+					items: [
+						{ label: 'Connect an AI client', slug: 'guides/mcp' },
+						{ label: 'Window control for developers', slug: 'guides/window-control' },
+					],
 				},
 				{
 					label: 'Help',
