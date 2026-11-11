@@ -92,7 +92,7 @@
 </div>
 
 <style>
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem 4rem; max-width: 1280px; margin: 0 auto; padding: 0 3rem; align-items: center; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem 4rem; max-width: 1280px; margin: 0 auto; padding: 0 3rem; align-items: center; user-select: none; -webkit-user-select: none; }
   .card { background: #0e0e11; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 2.4rem 2rem 2.6rem; min-height: 300px; display: flex; flex-direction: column; }
   .card h3 { font: 800 1.35rem var(--display); font-stretch: 88%; letter-spacing: .03em; text-transform: uppercase; display: flex; align-items: center; gap: .55rem; margin: 0 0 .6rem; }
   .card p { color: #b4b4bb; margin: 0; max-width: 46ch; line-height: 1.55; }
