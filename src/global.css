@@ -52,3 +52,5 @@ a { color: inherit; }
 ::view-transition-new(root) { animation: page-in .28s ease both; }
 @keyframes page-out { to { opacity: 0; } }
 @keyframes page-in { from { opacity: 0; } }
+
+html { -webkit-tap-highlight-color: transparent; }
