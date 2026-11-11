@@ -28,7 +28,7 @@
         <Button icon="pr" href={links.contributors}>Contributors</Button>
       </div>
       <ul class="meta">
-        {#each platforms as p}<li><img src="/assets/img/platforms/{p}.svg" alt={p} width="14" height="14" /></li>{/each}
+        {#each platforms as p}<li><img src="/assets/img/platforms/{p}.svg" alt={p} width="14" height="14" draggable="false" /></li>{/each}
       </ul>
     </div>
   </section>
@@ -89,7 +89,8 @@
   .tag em { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 1.12em; color: #d6d6da; }
   .cta { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; }
   .chips { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin-top: 1.2rem; }
-  .meta { list-style: none; display: flex; gap: 1.1rem; padding: 0; margin: 1.8rem 0 0; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .meta { list-style: none; display: flex; gap: 1.1rem; padding: 0; margin: 1.8rem 0 0; align-items: center; flex-wrap: wrap; justify-content: center; user-select: none; -webkit-user-select: none; }
+  .meta img { pointer-events: none; -webkit-user-drag: none; }
   .meta img { opacity: .55; display: block; }
 
   .block { padding: 4rem 24px; overflow-x: clip; }
