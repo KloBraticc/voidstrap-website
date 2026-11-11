@@ -35,8 +35,7 @@
 <style>
   .featured { position: relative; max-width: 1280px; height: clamp(320px, 38vw, 480px); margin: 0 auto; border-radius: 14px; overflow: hidden; background: #0b0b0d; user-select: none; }
   .poster, video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  video { opacity: 0; visibility: hidden; transition: opacity .6s ease; pointer-events: none; }
-  video.on { visibility: visible; }
+  video { opacity: 0; transition: opacity .6s ease; pointer-events: none; }
   video.on { opacity: 1; }
   .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 75%), linear-gradient(0deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 50%); }
   .info { position: absolute; left: 2.6rem; right: 2.6rem; bottom: 2.4rem; }
