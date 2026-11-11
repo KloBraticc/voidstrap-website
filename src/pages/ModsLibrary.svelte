@@ -28,9 +28,27 @@
 
   const POWERFUL = ["native", "files", "web", "clipboard"];
 
+  let selectedId = $state(new URLSearchParams(location.search).get("mod"));
+  const selected = $derived(selectedId ? mods.find((m) => m.id === selectedId) : null);
+  const size = (b) => (b < 1024 ? b + " B" : (b / 1024).toFixed(1).replace(/\.0$/, "") + " KB");
+
+  function open(e, m) {
+    e.preventDefault();
+    history.pushState(null, "", "/mods?mod=" + encodeURIComponent(m.id));
+    selectedId = m.id;
+    scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  function close(e) {
+    e.preventDefault();
+    history.pushState(null, "", "/mods");
+    selectedId = null;
+  }
+
   const date = (iso) => new Date(iso).toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
 
   onMount(async () => {
+    addEventListener("popstate", () => (selectedId = new URLSearchParams(location.search).get("mod")));
     try {
       const r = await fetch(`${raw}/index/index.json`, { cache: "no-cache" });
       if (!r.ok) throw new Error(String(r.status));
@@ -45,12 +63,55 @@
   });
 </script>
 
+{#snippet icon(m)}{#if m.icon}<img src="{raw}/{commit}/mods/{m.name}/{m.icon}" alt="" loading="lazy" draggable="false" />{:else}<svg viewBox="32.0 -458.0 416 416" fill="currentColor" aria-hidden="true"><path d="M271 -458Q296 -458 314.0 -441.0Q332 -424 333 -400V-396H380Q394 -396 404.0 -387.0Q414 -378 416 -365L417 -362V-281H375Q364 -281 355.0 -274.0Q346 -267 344 -255V-250Q344 -239 351.0 -230.0Q358 -221 370 -219H417V-141Q417 -126 407.0 -115.5Q397 -105 383 -104H333V-101Q332 -78 316.5 -61.5Q301 -45 278 -42H271Q246 -42 228.0 -59.0Q210 -76 208 -100V-104H161Q148 -104 138.0 -112.5Q128 -121 126 -134L125 -138V-188H122Q99 -189 82.5 -204.5Q66 -220 63 -243V-250Q63 -275 80.0 -293.0Q97 -311 122 -312L125 -313V-359Q125 -373 133.5 -383.0Q142 -393 155 -395L158 -396H208V-399Q210 -422 225.5 -438.5Q241 -455 263 -458ZM271 -427Q259 -427 250.0 -419.0Q241 -411 240 -399V-365H161Q157 -365 156 -361V-281H125Q113 -281 104.0 -272.5Q95 -264 94.0 -251.5Q93 -239 101.5 -229.5Q110 -220 122 -219H156V-141Q156 -136 160 -136L240 -135V-104Q239 -92 248.0 -82.5Q257 -73 269.5 -72.5Q282 -72 291.5 -80.5Q301 -89 302 -101V-135H380Q384 -135 385 -139V-188H371Q347 -189 330.5 -206.0Q314 -223 313 -247V-254Q314 -278 331.0 -294.5Q348 -311 371 -312H385V-359Q385 -362 383 -364H381L302 -365V-396Q302 -409 293.0 -418.0Q284 -427 271 -427Z" /></svg>{/if}{/snippet}
+
+{#snippet badges(m)}
+              {#if (m.permissions || []).some((p) => POWERFUL.includes(p))}<span class="badge red"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3zm-1 5h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>Powerful mod</span>{/if}
+              {#if m.verified}<span class="badge green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3zm-1.2 14.2-3.5-3.5 1.4-1.4 2.1 2.1 4.9-4.9 1.4 1.4-6.3 6.3z"/></svg>Verified</span>{:else if m.trusted}<span class="badge blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-6 8c0-3 3-5 6-5 .9 0 1.8.2 2.6.5A6 6 0 0 0 12 20H4zm13.5 1L14 17.5l1.4-1.4 2.1 2.1 4.1-4.1L23 15.5 17.5 21z"/></svg>Trusted author</span>{:else}<span class="badge yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>Not verified</span>{/if}
+              {#if m.featured}<span class="badge gold"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"/></svg>Featured</span>{/if}
+{/snippet}
+
 <div class="bg" aria-hidden="true"></div>
 
 <Topbar />
 
 <div class="page">
 
+  {#if selected}
+    {@const m = selected}
+    <section class="detail">
+      <a class="back" href="/mods" onclick={close}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Back to the library</a>
+      <div class="dgrid">
+        <div class="dmain">
+          <div class="dhead">
+            <div class="ico big">{@render icon(m)}</div>
+            <div class="dtitle">
+              <h1>{m.name}</h1>
+              <div class="name">{@render badges(m)}</div>
+            </div>
+          </div>
+          <p class="dsum">{m.description || "No description."}</p>
+          <div class="btns">
+            <a class="btn accent lg" href="voidstrap://mods/install/{m.id}" title="Opens Voidstrap and installs this mod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>Install</a>
+            <a class="btn lg" href="https://github.com/{repo}/tree/{commit}/mods/{m.name}" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.1-1.47-1.1-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>Source</a>
+          </div>
+          <h4>Websites it contacts</h4>
+          <p class="dtxt">{(m.network || []).length ? m.network.join(", ") : "Works offline"}{#if (m.permissions || []).includes("roblox-account")}<br />Uses your Roblox account (read only, never sees your login){/if}</p>
+          <h4>Files</h4>
+          <ul class="files">
+            {#each m.files || [] as f}<li><span>{f.path}</span><small>{size(f.size)}</small></li>{/each}
+          </ul>
+        </div>
+        <aside class="dside">
+          <div><small>Version</small><b>{m.version}</b></div>
+          <div><small>Updated</small><b>{date(m.updated || m.created)}</b></div>
+          <div><small>Creator</small><b>@{m.login}</b></div>
+          {#if (m.tags || []).length}<div><small>Tags</small><b>{m.tags.join(", ")}</b></div>{/if}
+          <div><small>Trust</small><b class="trust">{m.verified ? "Reviewed and verified by the maintainer." : m.trusted ? "Made by an author the maintainer trusts." : "Only automated checks looked at this mod. Install it only if you trust the author."}</b></div>
+        </aside>
+      </div>
+    </section>
+  {:else}
   <section class="head">
     <div class="tools">
       <input type="search" placeholder="Search mods" bind:value={query} aria-label="Search mods" />
@@ -88,15 +149,12 @@
   {:else}
     <div class="list">
       {#each shown as m (m.id)}
-        {@const powerful = (m.permissions || []).some((p) => POWERFUL.includes(p))}
         <div class="row">
-          <div class="ico">{#if m.icon}<img src="{raw}/{commit}/mods/{m.name}/{m.icon}" alt="" loading="lazy" draggable="false" />{:else}<svg viewBox="32.0 -458.0 416 416" fill="currentColor" aria-hidden="true"><path d="M271 -458Q296 -458 314.0 -441.0Q332 -424 333 -400V-396H380Q394 -396 404.0 -387.0Q414 -378 416 -365L417 -362V-281H375Q364 -281 355.0 -274.0Q346 -267 344 -255V-250Q344 -239 351.0 -230.0Q358 -221 370 -219H417V-141Q417 -126 407.0 -115.5Q397 -105 383 -104H333V-101Q332 -78 316.5 -61.5Q301 -45 278 -42H271Q246 -42 228.0 -59.0Q210 -76 208 -100V-104H161Q148 -104 138.0 -112.5Q128 -121 126 -134L125 -138V-188H122Q99 -189 82.5 -204.5Q66 -220 63 -243V-250Q63 -275 80.0 -293.0Q97 -311 122 -312L125 -313V-359Q125 -373 133.5 -383.0Q142 -393 155 -395L158 -396H208V-399Q210 -422 225.5 -438.5Q241 -455 263 -458ZM271 -427Q259 -427 250.0 -419.0Q241 -411 240 -399V-365H161Q157 -365 156 -361V-281H125Q113 -281 104.0 -272.5Q95 -264 94.0 -251.5Q93 -239 101.5 -229.5Q110 -220 122 -219H156V-141Q156 -136 160 -136L240 -135V-104Q239 -92 248.0 -82.5Q257 -73 269.5 -72.5Q282 -72 291.5 -80.5Q301 -89 302 -101V-135H380Q384 -135 385 -139V-188H371Q347 -189 330.5 -206.0Q314 -223 313 -247V-254Q314 -278 331.0 -294.5Q348 -311 371 -312H385V-359Q385 -362 383 -364H381L302 -365V-396Q302 -409 293.0 -418.0Q284 -427 271 -427Z" /></svg>{/if}</div>
+          <div class="ico">{@render icon(m)}</div>
           <div class="info">
             <div class="name">
               <b>{m.name}</b>
-              {#if powerful}<span class="badge red"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3zm-1 5h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>Powerful mod</span>{/if}
-              {#if m.verified}<span class="badge green"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3zm-1.2 14.2-3.5-3.5 1.4-1.4 2.1 2.1 4.9-4.9 1.4 1.4-6.3 6.3z"/></svg>Verified</span>{:else if m.trusted}<span class="badge blue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-6 8c0-3 3-5 6-5 .9 0 1.8.2 2.6.5A6 6 0 0 0 12 20H4zm13.5 1L14 17.5l1.4-1.4 2.1 2.1 4.1-4.1L23 15.5 17.5 21z"/></svg>Trusted author</span>{:else}<span class="badge yellow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>Not verified</span>{/if}
-              {#if m.featured}<span class="badge gold"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"/></svg>Featured</span>{/if}
+              {@render badges(m)}
             </div>
             <p>{m.description || "No description."}</p>
             <div class="meta">
@@ -108,7 +166,7 @@
           <div class="side">
             <span class="ver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg>{m.version}</span>
             <div class="btns">
-              <a class="btn" href="https://github.com/{repo}/tree/{commit}/mods/{m.name}" rel="noopener noreferrer">View</a>
+              <a class="btn" href="/mods?mod={encodeURIComponent(m.id)}" onclick={(e) => open(e, m)}>View</a>
               <a class="btn accent" href="voidstrap://mods/install/{m.id}" title="Opens Voidstrap and installs this mod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>Install</a>
             </div>
           </div>
@@ -116,11 +174,37 @@
       {/each}
     </div>
   {/if}
+  {/if}
 </div>
 
 <style>
   .bg { position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(11,11,13,.35) 0%, rgba(11,11,13,.6) 50%, rgba(11,11,13,.85) 100%), url("/assets/img/hero.webp") center / cover no-repeat; }
   .page { max-width: 1480px; margin: 0 auto; padding: 0 1.5rem 3rem; user-select: none; }
+  .detail { padding: 1.5rem 0 2rem; }
+  .back { display: inline-flex; align-items: center; gap: .35rem; color: #c9c9cf; text-decoration: none; font-size: .92rem; margin-bottom: 1.4rem; }
+  .back svg { width: 16px; height: 16px; }
+  .dgrid { display: grid; grid-template-columns: 1fr 300px; gap: 1.2rem; align-items: start; }
+  .dmain, .dside { padding: 1.6rem; border-radius: 8px; background: #0e0e11; border: 1px solid rgba(255,255,255,.1); }
+  .dhead { display: flex; align-items: center; gap: 1.1rem; }
+  .ico.big { width: 96px; height: 96px; flex: none; }
+  .ico.big svg { width: 34px; height: 34px; }
+  .dtitle { display: grid; gap: .5rem; min-width: 0; }
+  .dtitle h1 { margin: 0; font: 900 clamp(1.6rem, 3vw, 2.2rem) var(--display); font-stretch: 88%; line-height: 1.05; overflow-wrap: anywhere; }
+  .dsum { margin: 1.2rem 0; color: #c9c9cf; font-size: 1.02rem; line-height: 1.55; }
+  .btn.lg { height: 42px; padding: 0 1.4rem; font-size: .9rem; }
+  .btn.lg svg { width: 16px; height: 16px; }
+  .dmain h4 { margin: 1.8rem 0 .5rem; font: 600 .7rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+  .dtxt { margin: 0; color: #a9a9b2; font-size: .92rem; }
+  .files { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .files li { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem .7rem; border-radius: 5px; background: rgba(255,255,255,.03); font: .8rem var(--mono); color: #c9c9cf; }
+  .files span { overflow-wrap: anywhere; }
+  .files small { color: #7c7c86; flex: none; }
+  .dside { display: grid; gap: 1.1rem; }
+  .dside div { display: grid; gap: .2rem; }
+  .dside small { font: 600 .68rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #7c7c86; }
+  .dside b { color: #fff; font-weight: 600; font-size: .95rem; }
+  .dside b.trust { color: #a9a9b2; font-weight: 400; font-size: .88rem; line-height: 1.5; }
+  @media (max-width: 860px) { .dgrid { grid-template-columns: 1fr; } .dhead { align-items: flex-start; } .ico.big { width: 64px; height: 64px; } }
   .head { padding: 1.5rem 0 1rem; }
   .tools { display: flex; gap: .7rem; flex-wrap: wrap; }
   input { height: 42px; padding: 0 .9rem; border-radius: 6px; border: 1px solid rgba(255,255,255,.12); background: #0e0e11; color: #fff; font: inherit; font-size: .95rem; }
