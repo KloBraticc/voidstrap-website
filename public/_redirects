@@ -16,10 +16,9 @@
 /Documentation/Documentation.html / 301
 /pages/documentation / 301
 /pages/documentation.html / 301
-/mods / 301
-/Mods/Mods.html / 301
-/pages/mods / 301
-/pages/mods.html / 301
+/Mods/Mods.html /mods 301
+/pages/mods /mods 301
+/pages/mods.html /mods 301
 /donate / 301
 /Donate/Donate.html / 301
 /pages/donate / 301

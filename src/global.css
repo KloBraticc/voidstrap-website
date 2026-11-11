@@ -28,9 +28,9 @@
   src: url("/assets/fonts/geist-mono.woff2") format("woff2");
 }
 :root {
-  --bg: #111113;
-  --panel: #151517;
-  --line: #262629;
+  --bg: #0b0b0d;
+  --panel: #0e0e11;
+  --line: #1f1f23;
   --text: #f2f2f3;
   --muted: #9a9aa2;
   --accent: #a77bff;
@@ -40,14 +40,15 @@
   --mono: "Geist Mono", ui-monospace, monospace;
   color-scheme: dark;
 }
-* { box-sizing: border-box; scrollbar-width: none; }
-*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+* { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 h1, h2 { font-family: var(--display); }
 a { color: inherit; }
-::selection { background: var(--accent); color: #fff; }
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-}
+::selection { background: rgba(255,255,255,.22); color: #fff; }
+
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: page-out .22s ease both; }
+::view-transition-new(root) { animation: page-in .28s ease both; }
+@keyframes page-out { to { opacity: 0; } }
+@keyframes page-in { from { opacity: 0; } }
