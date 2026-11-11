@@ -1,6 +1,7 @@
 <script>
   let game = $state(null);
   let playing = $state(false);
+  const canPlay = typeof document !== "undefined" && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') === "probably";
 
   $effect(() => {
     fetch("/api/featured", { cache: "no-cache" })
@@ -15,7 +16,7 @@
 {#if game}
   <div class="featured">
     {#if game.thumbnail}<img class="poster" src={game.thumbnail} alt="" draggable="false" />{/if}
-    <video class:on={playing} src={game.video} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback poster={game.thumbnail || undefined} ontimeupdate={(e) => { if (e.currentTarget.currentTime > 0.05 && e.currentTarget.videoWidth) playing = true; }} onerror={() => (playing = false)}></video>
+    {#if canPlay}<video class:on={playing} src={game.video} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback ontimeupdate={(e) => { if (e.currentTarget.currentTime > 0.05 && e.currentTarget.videoWidth) playing = true; }} onerror={() => (playing = false)}></video>{/if}
     <div class="shade"></div>
     <div class="info">
       <span class="pill">Most played right now</span>
