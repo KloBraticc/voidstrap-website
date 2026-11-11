@@ -44,7 +44,7 @@
   <section class="banner-wrap">
     <div class="banner">
       <img src="/assets/img/brand/voidstrap-256.webp" alt="" width="96" height="96" draggable="false" />
-      <p><b>Total FastFlag control</b>, a growing <b>mods library</b> and custom <b>themes</b> on Windows, Linux and Android. <b>Completely free.</b></p>
+      <p><b>Total FastFlag control</b>, a growing <b>mods library</b> and custom <b>themes</b> on Windows, macOS, Linux and Android. <b>Completely free.</b></p>
       <a class="get-it" href={links.releases} rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1zM4 17a1 1 0 0 1 1 1v1h14v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1z" /></svg>Download</a>
     </div>
   </section>
