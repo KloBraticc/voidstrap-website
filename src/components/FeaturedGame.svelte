@@ -4,7 +4,7 @@
   const canPlay = typeof document !== "undefined" && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') === "probably";
 
   $effect(() => {
-    fetch("/api/featured", { cache: "no-cache" })
+    fetch("/api/featured")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d && d.video) game = d; })
       .catch(() => {});

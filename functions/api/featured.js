@@ -7,7 +7,7 @@ async function getJson(url) {
   return res.json();
 }
 
-export async function onRequest() {
+async function build() {
   try {
     const sorts = await getJson(`https://apis.roblox.com/explore-api/v1/get-sorts?sessionId=${crypto.randomUUID()}`);
     const top = (sorts.sorts || []).find((s) => (s.sortId || "").includes("top-playing"));
@@ -32,4 +32,14 @@ export async function onRequest() {
   } catch {
     return json({ error: "unavailable" }, 502);
   }
+}
+
+export async function onRequest(context) {
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const key = new Request("https://voidstrapp.pages.dev/cache/featured.json");
+  const hit = cache && (await cache.match(key));
+  if (hit) return hit;
+  const res = await build();
+  if (cache && res.status === 200) context.waitUntil(cache.put(key, res.clone()));
+  return res;
 }
