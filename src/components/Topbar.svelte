@@ -5,9 +5,8 @@
   const drawer = [
     ["Explore", [
       ["Home", "/#top", "Back to the top and the quick download buttons.", 0],
-      ["Features", "/#features", "Everything Voidstrap adds on top of Roblox.", 3],
-      ["Customize", "/#features", "Themes, fonts, cursors and launcher looks.", 2],
-      ["Mods", "/#mods", "Sandboxed mods that add widgets, pages and more.", 9]
+      ["Most played", "/#features", "The game everyone is playing right now.", 3],
+      ["Mods", "/#mods", "See how Voidstrap mods are checked and run.", 9]
     ]],
     ["Resources", [
       ["Download", links.releases, "Grab the latest release for your system.", 4],
