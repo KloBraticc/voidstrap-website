@@ -16,7 +16,7 @@
 {#if game}
   <div class="featured">
     {#if game.thumbnail}<img class="poster" src={game.thumbnail} alt="" draggable="false" />{/if}
-    {#if canPlay}<video class:on={playing} src={game.video} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback ontimeupdate={(e) => { if (e.currentTarget.currentTime > 0.05 && e.currentTarget.videoWidth) playing = true; }} onerror={() => (playing = false)}></video>{/if}
+    {#if canPlay}<video class:on={playing} src={game.video} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback ontimeupdate={(e) => { if (e.currentTarget.currentTime > 0.05 && e.currentTarget.videoWidth) playing = true; }} onerror={() => (playing = false)}></video>{#if !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
     <div class="shade"></div>
     <div class="info">
       <span class="pill">Most played right now</span>
@@ -38,6 +38,9 @@
   .poster, video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   video { opacity: 0; transition: opacity .6s ease; pointer-events: none; }
   video.on { opacity: 1; }
+  .loading { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; background: #0b0b0d; }
+  .loading i { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: #c4a7ff; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 75%), linear-gradient(0deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 50%); }
   .info { position: absolute; left: 2.6rem; right: 2.6rem; bottom: 2.4rem; }
   .pill { display: inline-block; padding: .3rem .8rem; border-radius: 999px; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.2); backdrop-filter: blur(6px); font-size: .8rem; font-weight: 600; color: #fff; }
