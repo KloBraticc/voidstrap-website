@@ -193,7 +193,7 @@
   .dsum { margin: 1.2rem 0; color: #c9c9cf; font-size: 1.02rem; line-height: 1.55; }
   .btn.lg { height: 42px; padding: 0 1.4rem; font-size: .9rem; }
   .btn.lg svg { width: 16px; height: 16px; }
-  .dmain h4 { margin: 1.8rem 0 .5rem; font: 600 .7rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+  .dmain h4 { margin: 1.8rem 0 .5rem; font: 600 .7rem var(--mono); letter-spacing: .02em; color: var(--accent); }
   .dtxt { margin: 0; color: #a9a9b2; font-size: .92rem; }
   .files { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
   .files li { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem .7rem; border-radius: 5px; background: rgba(255,255,255,.03); font: .8rem var(--mono); color: #c9c9cf; }
@@ -201,7 +201,7 @@
   .files small { color: #7c7c86; flex: none; }
   .dside { display: grid; gap: 1.1rem; }
   .dside div { display: grid; gap: .2rem; }
-  .dside small { font: 600 .68rem var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #7c7c86; }
+  .dside small { font: 600 .68rem var(--mono); letter-spacing: .02em; color: #7c7c86; }
   .dside b { color: #fff; font-weight: 600; font-size: .95rem; }
   .dside b.trust { color: #a9a9b2; font-weight: 400; font-size: .88rem; line-height: 1.5; }
   @media (max-width: 860px) { .dgrid { grid-template-columns: 1fr; } .dhead { align-items: flex-start; } .ico.big { width: 64px; height: 64px; } }
