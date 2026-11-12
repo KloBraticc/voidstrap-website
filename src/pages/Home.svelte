@@ -2,7 +2,8 @@
   import Button from "../components/Button.svelte";
   import Topbar from "../components/Topbar.svelte";
   import FeaturedGame from "../components/FeaturedGame.svelte";
-    import ModsShowcase from "../components/ModsShowcase.svelte";
+  import ModsShowcase from "../components/ModsShowcase.svelte";
+  import InstallCommands from "../components/InstallCommands.svelte";
   import { links, platforms } from "../data/site.js";
 
   const nav = [
@@ -10,6 +11,7 @@
     ["Features", "#features"],
     ["Mods", "#mods"]
   ];
+  let installDialog;
 </script>
 
 <div class="frame" id="top">
@@ -21,7 +23,7 @@
       <p class="tag">Another day of a Bloxstrap fork, <em>just with way more control.</em></p>
       <div class="cta">
         <Button variant="solid" icon="download" href={links.releases}>Download</Button>
-        <Button variant="ghost" icon="terminal" href={links.wiki}>Install command</Button>
+        <Button variant="ghost" icon="terminal" onclick={() => installDialog.showModal()}>Install command</Button>
       </div>
       <div class="chips">
         <Button icon="github" href={links.github}>GitHub</Button>
@@ -69,6 +71,8 @@
     </div>
   </footer>
 </div>
+
+<InstallCommands bind:dialog={installDialog} />
 
 <style>
   .frame { width: 100%; margin: 0; min-height: 100vh; position: relative; }
