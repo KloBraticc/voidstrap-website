@@ -8,6 +8,8 @@ const SITE_PAUSE_MS = 5 * 60000;
 const TURNSTILE_VERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const LIBRARY_URL = "https://raw.githubusercontent.com/KloBraticc/voidstrap-mods-library/index/index.json";
 const MOD_ID = /^[0-9]{1,20}\/[a-z0-9][a-z0-9._-]{0,99}$/i;
+const HOSTING_ASNS = new Set([9009, 16509, 14618, 15169, 396982, 8075, 14061, 16276, 24940, 63949, 20473, 45102, 37963, 132203, 31898, 13335, 209242, 60068, 212238, 136787, 9002, 51167, 197540, 62240, 174, 3223, 49981, 206092, 40021, 46562, 53667, 36352, 55286, 19531, 393406, 202425, 213230, 210644, 141039, 147049, 44477, 207137, 39351, 62041, 25369, 42831, 211252, 49453, 57858, 48282, 35916, 29802, 8100, 23470, 54600, 30633, 32613, 26347, 46606, 11878, 7979, 199524, 39572, 43357, 34549, 200651, 207990, 16247, 50613, 33387, 23033, 51852, 60781, 28753, 16265, 12876, 24961, 47583, 8560, 3842, 54290, 22612, 25820, 29838, 398101, 399629]);
+const HOSTING_ORG = /amazon|aws|google cloud|microsoft|azure|digitalocean|linode|akamai|vultr|choopa|ovh|hetzner|contabo|leaseweb|m247|datacamp|cdn77|packethub|tzulo|hostroyale|zenlayer|psychz|quadranet|colocrossing|hostinger|hostwinds|ionos|scaleway|alibaba|tencent|oracle|cloudflare|fastly|g-core|gcore|kamatera|servers\.com|serverion|worldstream|nforce|i3d|tefincom|nordvpn|expressvpn|surfshark|proton|mullvad|private internet access|cyberghost|ipvanish|windscribe|hide\.me|vpn|proxy|hosting|datacenter|data center|dedicated server|cloud/i;
 const encoder = new TextEncoder();
 const keyCache = new Map();
 
@@ -32,6 +34,13 @@ function networkOf(ip) {
   if (left.length + right.length > 8 || [...left, ...right].some((part) => !/^[0-9a-f]{1,4}$/.test(part))) return null;
   const full = [...left, ...Array(8 - left.length - right.length).fill("0"), ...right];
   return full.slice(0, 3).map((part) => part.padStart(4, "0")).join(":") + ":" + full[3].padStart(4, "0").slice(0, 2) + "00::/56";
+}
+
+function hostedNetwork(request) {
+  const cf = request.cf;
+  if (!cf) return false;
+  if (HOSTING_ASNS.has(Number(cf.asn))) return true;
+  return typeof cf.asOrganization === "string" && HOSTING_ORG.test(cf.asOrganization);
 }
 
 async function hmac(secret, purpose, value) {
@@ -182,6 +191,7 @@ export async function onRequestPost(context) {
     return fail(403, "Invalid request.");
   }
   try {
+    if (hostedNetwork(request)) return fail(403, "Voting is not available over a VPN, proxy or hosting network.");
     const voter = await voterOf(request, env);
     if (!voter) return fail(403, "Voting is unavailable from this network.");
     if (await rateLimited(env, voter, context)) return fail(429, "Too many votes. Please try again later.");

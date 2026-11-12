@@ -215,7 +215,7 @@
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        voteError = response.status === 429 ? "Too many votes. Please wait a moment and try again." : response.status === 403 ? "Could not verify your vote. Please try again." : "Could not save your vote. Please try again later.";
+        voteError = response.status === 429 ? "Too many votes. Please wait a moment and try again." : response.status === 403 ? (await response.json().catch(() => ({}))).error || "Could not verify your vote. Please try again." : "Could not save your vote. Please try again later.";
         if (response.status >= 500) votingAvailable = false;
         return;
       }
