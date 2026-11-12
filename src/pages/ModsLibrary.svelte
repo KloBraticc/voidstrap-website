@@ -490,9 +490,9 @@
   @media (prefers-reduced-motion: reduce) { .head, .results, .filters { opacity: 1; animation: none; } }
   .tools { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: .7rem; }
   input { height: 42px; padding: 0 .9rem; border-radius: 6px; border: 1px solid rgba(255,255,255,.12); background: #0e0e11; color: #fff; font: inherit; font-size: .95rem; }
-  input { flex: 1; min-width: 220px; }
+  input { flex: 1; min-width: min(220px, 100%); }
   input:focus { outline: none; border-color: var(--accent); }
-  .dd { position: relative; min-width: 190px; }
+  .dd { position: relative; min-width: min(190px, 100%); }
   .dd-btn { width: 100%; height: 42px; display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: 0 .9rem; border-radius: 6px; border: 1px solid rgba(255,255,255,.12); background: #0e0e11; color: #fff; font: inherit; font-size: .95rem; cursor: pointer; }
   .dd-btn.open { border-color: var(--accent); }
   .dd-btn svg { width: 16px; height: 16px; color: #a9a9b2; transition: transform .15s; }

@@ -1015,9 +1015,7 @@
   .vine-canvas {
     display: block;
     position: relative;
-    left: 50%;
-    width: 100vw;
+    width: 100%;
     height: 100%;
-    transform: translateX(-50%);
   }
 </style>
