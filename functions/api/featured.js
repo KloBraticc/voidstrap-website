@@ -1,10 +1,29 @@
 const json = (body, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "public, max-age=900" } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "content-type": "application/json",
+      "cache-control": status === 200 ? "public, max-age=900" : "public, max-age=120",
+      "x-content-type-options": "nosniff"
+    }
+  });
+
+const CACHE_KEY = "https://voidstrapp.pages.dev/cache/featured.json";
+let inflight = null;
 
 async function getJson(url) {
-  const res = await fetch(url, { headers: { accept: "application/json" } });
+  const res = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(6000) });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return res.json();
+}
+
+function safeThumb(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname.endsWith(".rbxcdn.com") ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 
 async function build() {
@@ -13,18 +32,19 @@ async function build() {
     const top = (sorts.sorts || []).find((s) => (s.sortId || "").includes("top-playing"));
     const games = (top?.games || []).filter((g) => !/brookhaven/i.test(g.name)).slice(0, 8);
     for (const game of games) {
+      if (!/^\d{1,20}$/.test(String(game.universeId)) || !/^\d{1,20}$/.test(String(game.rootPlaceId))) continue;
       const media = await getJson(`https://games.roblox.com/v2/games/${game.universeId}/media`);
       const clip = (media.data || []).find((m) => m.assetType === "GamePreviewVideo" && m.videoId && m.approved);
-      if (!clip) continue;
+      if (!clip || !/^\d{1,20}$/.test(String(clip.videoId))) continue;
       const thumbs = await getJson(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${game.universeId}&size=768x432&format=Webp&countPerUniverse=1`);
       const votes = game.totalUpVotes + game.totalDownVotes;
       return json({
-        name: game.name,
-        players: game.playerCount,
+        name: String(game.name || "").slice(0, 120),
+        players: Number(game.playerCount) || 0,
         likes: votes ? Math.round((game.totalUpVotes / votes) * 100) : null,
         url: `https://www.roblox.com/games/${game.rootPlaceId}`,
         launch: `roblox://experiences/start?placeId=${game.rootPlaceId}`,
-        thumbnail: thumbs.data?.[0]?.thumbnails?.[0]?.imageUrl || null,
+        thumbnail: safeThumb(thumbs.data?.[0]?.thumbnails?.[0]?.imageUrl),
         video: `/api/video?id=${clip.videoId}`
       });
     }
@@ -34,12 +54,17 @@ async function build() {
   }
 }
 
-export async function onRequest(context) {
+export async function getFeatured(context) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
-  const key = new Request("https://voidstrapp.pages.dev/cache/featured.json");
+  const key = new Request(CACHE_KEY);
   const hit = cache && (await cache.match(key));
   if (hit) return hit;
-  const res = await build();
-  if (cache && res.status === 200) context.waitUntil(cache.put(key, res.clone()));
+  inflight ??= build().finally(() => { inflight = null; });
+  const res = (await inflight).clone();
+  if (cache) context.waitUntil(cache.put(key, res.clone()));
   return res;
+}
+
+export async function onRequestGet(context) {
+  return getFeatured(context);
 }
