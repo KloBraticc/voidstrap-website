@@ -75,11 +75,11 @@
 <InstallCommands bind:dialog={installDialog} />
 
 <style>
-  .frame { width: 100%; margin: 0; min-height: 100vh; position: relative; }
+  .frame { width: 100%; margin: 0; min-height: 100svh; position: relative; }
 
 
   .featured-wrap { padding: 5rem 1.5rem 2rem; }
-  .hero { position: relative; min-height: clamp(540px, calc(100vh - 64px), 1020px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 3rem 1.5rem; overflow: hidden; contain: layout paint; }
+  .hero { position: relative; min-height: clamp(540px, calc(100vh - 64px), 1020px); min-height: clamp(540px, calc(100svh - 64px), 1020px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 3rem 1.5rem; overflow: hidden; contain: layout paint; }
   .hero-bg { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,11,13,.35) 0%, rgba(11,11,13,.55) 55%, var(--bg) 100%), radial-gradient(ellipse at center, rgba(11,11,13,0) 30%, rgba(11,11,13,.75) 100%), url("/assets/img/hero.webp") center / cover no-repeat; }
   .hero-inner { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; }
   .tag, .cta, .chips { opacity: 0; animation: rise .8s cubic-bezier(.2,.8,.2,1) forwards; }

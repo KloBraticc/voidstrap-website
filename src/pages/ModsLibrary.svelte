@@ -427,7 +427,7 @@
 <div class="turnstile" bind:this={turnstileHost}></div>
 
 <style>
-  .bg { position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(11,11,13,.35) 0%, rgba(11,11,13,.6) 50%, rgba(11,11,13,.85) 100%), url("/assets/img/hero.webp") center / cover no-repeat; }
+  .bg { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: -1; background: linear-gradient(180deg, rgba(11,11,13,.35) 0%, rgba(11,11,13,.6) 50%, rgba(11,11,13,.85) 100%), url("/assets/img/hero.webp") center / cover no-repeat; }
   .page { max-width: 1480px; margin: 0 auto; padding: 0 1.5rem 3rem; user-select: none; }
   .detail { padding: 1.5rem 0 2rem; }
   .back { display: inline-flex; align-items: center; gap: .35rem; color: #c9c9cf; text-decoration: none; font-size: .92rem; margin-bottom: 1.4rem; }
