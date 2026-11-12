@@ -36,11 +36,45 @@ function networkOf(ip) {
   return full.slice(0, 3).map((part) => part.padStart(4, "0")).join(":") + ":" + full[3].padStart(4, "0").slice(0, 2) + "00::/56";
 }
 
-function hostedNetwork(request) {
+const ASN_LISTS = [
+  "https://raw.githubusercontent.com/X4BNet/lists_vpn/main/input/datacenter/ASN.txt",
+  "https://raw.githubusercontent.com/X4BNet/lists_vpn/main/input/vpn/ASN.txt"
+];
+const ASN_LIST_TTL = 6 * 3600000;
+let listedAsns = null;
+let listedAt = 0;
+
+async function loadListedAsns(context) {
+  if (listedAsns && Date.now() - listedAt < ASN_LIST_TTL) return listedAsns;
+  try {
+    const cache = typeof caches !== "undefined" ? caches.default : null;
+    const key = new Request(new URL("/cache/asn-blocklist", context.request.url));
+    let text = cache && await cache.match(key).then((r) => r?.text());
+    if (!text) {
+      const parts = await Promise.all(ASN_LISTS.map((url) => fetch(url, { signal: AbortSignal.timeout(4000), cf: { cacheTtl: 86400 } }).then((r) => (r.ok ? r.text() : ""))));
+      text = parts.join(String.fromCharCode(10)).slice(0, 1000000);
+      if (text.length > 100 && cache) context.waitUntil(cache.put(key, new Response(text, { headers: { "Cache-Control": "public, max-age=86400" } })));
+    }
+    const found = new Set(Array.from(text.matchAll(/^AS(\d{1,10})/gm), (m) => Number(m[1])));
+    if (found.size > 50) {
+      listedAsns = found;
+      listedAt = Date.now();
+    }
+  } catch {}
+  return listedAsns || new Set();
+}
+
+function extraAsns(env) {
+  return new Set(String(env.EXTRA_BLOCKED_ASNS || "").split(/[\s,]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0));
+}
+
+async function hostedNetwork(request, env, context) {
   const cf = request.cf;
   if (!cf) return false;
-  if (HOSTING_ASNS.has(Number(cf.asn))) return true;
-  return typeof cf.asOrganization === "string" && HOSTING_ORG.test(cf.asOrganization);
+  const asn = Number(cf.asn);
+  if (HOSTING_ASNS.has(asn) || extraAsns(env).has(asn)) return true;
+  if (typeof cf.asOrganization === "string" && HOSTING_ORG.test(cf.asOrganization)) return true;
+  return (await loadListedAsns(context)).has(asn);
 }
 
 async function hmac(secret, purpose, value) {
@@ -191,7 +225,7 @@ export async function onRequestPost(context) {
     return fail(403, "Invalid request.");
   }
   try {
-    if (hostedNetwork(request)) return fail(403, "Voting is not available over a VPN, proxy or hosting network.");
+    if (await hostedNetwork(request, env, context)) return fail(403, "Voting is not available over a VPN, proxy or hosting network.");
     const voter = await voterOf(request, env);
     if (!voter) return fail(403, "Voting is unavailable from this network.");
     if (await rateLimited(env, voter, context)) return fail(429, "Too many votes. Please try again later.");
