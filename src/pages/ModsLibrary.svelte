@@ -132,6 +132,7 @@
     </div>
   </section>
 
+  <div class="results">
   {#if status === "loading"}
     <div class="list" aria-busy="true" aria-label="Loading mods">
       {#each Array(6) as _}
@@ -174,6 +175,7 @@
       {/each}
     </div>
   {/if}
+  </div>
   {/if}
 </div>
 
@@ -206,6 +208,11 @@
   .dside b.trust { color: #a9a9b2; font-weight: 400; font-size: .88rem; line-height: 1.5; }
   @media (max-width: 860px) { .dgrid { grid-template-columns: 1fr; } .dhead { align-items: flex-start; } .ico.big { width: 64px; height: 64px; } }
   .head { padding: 1.5rem 0 1rem; }
+  .head, .results { opacity: 0; animation: rise .8s cubic-bezier(.2,.8,.2,1) forwards; }
+  .head { animation-delay: .26s; }
+  .results { animation-delay: .34s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .head, .results { opacity: 1; animation: none; } }
   .tools { display: flex; gap: .7rem; flex-wrap: wrap; }
   input { height: 42px; padding: 0 .9rem; border-radius: 6px; border: 1px solid rgba(255,255,255,.12); background: #0e0e11; color: #fff; font: inherit; font-size: .95rem; }
   input { flex: 1; min-width: 220px; }
