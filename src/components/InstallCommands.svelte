@@ -66,7 +66,7 @@
   .command { display: flex; min-width: 0; margin-top: .6rem; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; background: rgba(255,255,255,.04); }
   .command code { flex: 1; min-width: 0; padding: .65rem; overflow-x: auto; white-space: nowrap; color: #e3d6ff; font: .75rem var(--mono); user-select: text; -webkit-user-select: text; }
   .command button { padding: .6rem; border: 0; border-left: 1px solid rgba(255,255,255,.1); background: transparent; color: #fff; font: 600 .8rem var(--sans); cursor: pointer; }
-  .command button:hover { background: rgba(255,255,255,.08); }
+  .command button:hover, .command button:active { background: rgba(255,255,255,.08); }
   .status:empty { display: none; }
   .status { color: #ffb5b5; font-size: .85rem; }
   .android { margin-top: 1.5rem; font-size: .78rem; color: #6f6f78; }

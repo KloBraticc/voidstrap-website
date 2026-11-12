@@ -97,7 +97,7 @@
   .card h3 { font: 800 1.35rem var(--display); font-stretch: 88%; letter-spacing: .03em; text-transform: uppercase; display: flex; align-items: center; gap: .55rem; margin: 0 0 .6rem; }
   .card p { color: #b4b4bb; margin: 0; max-width: 46ch; line-height: 1.55; }
   .btn { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-width: 150px; padding: .7rem 1.2rem; border-radius: 6px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.1); color: #fff; text-decoration: none; font: 800 .95rem var(--display); font-stretch: 88%; letter-spacing: .03em; text-transform: uppercase; text-shadow: 0 1px 2px rgba(0,0,0,.3); }
-  .btn:hover { background: rgba(255,255,255,.18); }
+  .btn:hover, .btn:active { background: rgba(255,255,255,.18); }
   .btn svg { width: 18px; height: 18px; }
   .maint { grid-column: 2; }
 
@@ -122,7 +122,7 @@
   .commit svg { width: 15px; height: 15px; }
   .merge { color: var(--accent); }
   .ok { color: #3fb950; }
-  .commit:hover strong { color: var(--accent); }
+  .commit:hover strong, .commit:active strong { color: var(--accent); }
 
   @media (max-width: 860px) {
     .grid { grid-template-columns: 1fr; padding: 0 1.5rem; gap: 2rem; }

@@ -61,7 +61,7 @@
   .topbar { position: relative; top: 0; z-index: 20; display: flex; align-items: center; gap: 1.5rem; height: 64px; justify-content: center; padding: 0 1rem; background: rgba(10,10,12,.96); backdrop-filter: blur(14px) saturate(1.2); border-bottom: 1px solid rgba(255,255,255,.06); }
   .actions { display: flex; align-items: center; gap: .6rem; }
   .menu { display: inline-flex; align-items: center; gap: .6rem; padding: .7rem 1.2rem; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.22); border-radius: 6px; backdrop-filter: blur(8px); color: #fff; cursor: pointer; font: 800 .95rem var(--display); font-stretch: 88%; letter-spacing: .03em; text-transform: uppercase; text-shadow: 0 1px 2px rgba(0,0,0,.3); }
-  .menu:hover { background: rgba(255,255,255,.18); }
+  .menu:hover, .menu:active { background: rgba(255,255,255,.18); }
   .bars { position: relative; display: block; width: 18px; height: 14px; }
   .bars i { position: absolute; left: 0; width: 100%; height: 2px; background: #fff; border-radius: 2px; transition: transform .28s cubic-bezier(.4,0,.2,1), width .25s cubic-bezier(.4,0,.2,1), opacity .2s ease; }
   .bars i:nth-child(1) { top: 0; }
@@ -69,7 +69,7 @@
   .bars i:nth-child(3) { top: 12px; }
   .bars:not(.x) i:nth-child(2) { width: 70%; }
   .bars:not(.x) i:nth-child(3) { width: 45%; }
-  .menu:hover .bars:not(.x) i { width: 100%; }
+  .menu:hover .bars:not(.x) i, .menu:active .bars:not(.x) i { width: 100%; }
   .bars.x i:nth-child(1) { transform: translateY(6px) rotate(45deg); }
   .bars.x i:nth-child(2) { opacity: 0; transform: scaleX(0); }
   .bars.x i:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
@@ -79,7 +79,7 @@
   .items { display: grid; gap: 1.1rem; }
   .wide .items { grid-template-columns: 1fr 1fr; gap: 1.1rem 1.6rem; }
   .item { display: flex; gap: 1rem; align-items: flex-start; text-decoration: none; padding: .35rem; margin: -.35rem; border-radius: 6px; }
-  .item:hover { background: rgba(255,255,255,.05); }
+  .item:hover, .item:active { background: rgba(255,255,255,.05); }
   .item img { width: 44px; height: 44px; flex: none; object-fit: contain; }
   .item span { display: grid; gap: .25rem; }
   .item b { font: 600 1.1rem var(--sans); color: #fff; }

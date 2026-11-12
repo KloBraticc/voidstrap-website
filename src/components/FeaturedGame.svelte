@@ -1,7 +1,7 @@
 <script>
   let game = $state(null);
   let playing = $state(false);
-  const canPlay = typeof document !== "undefined" && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') === "probably";
+  const canPlay = typeof document !== "undefined" && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') !== "";
 
   $effect(() => {
     fetch("/api/featured")
@@ -52,9 +52,9 @@
   .actions { display: flex; gap: .6rem; margin-top: 1.4rem; }
   .play, .open { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; height: 42px; border-radius: 6px; text-decoration: none; font-weight: 600; }
   .play { padding: 0 1.6rem; background: #c4a7ff; color: #1a1124; }
-  .play:hover { background: #d3bcff; }
+  .play:hover, .play:active { background: #d3bcff; }
   .open { width: 42px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); color: #fff; }
-  .open:hover { background: rgba(255,255,255,.2); }
+  .open:hover, .open:active { background: rgba(255,255,255,.2); }
   .play svg, .open svg { width: 17px; height: 17px; }
   @media (max-width: 560px) { .info { left: 1.4rem; right: 1.4rem; bottom: 1.4rem; } }
 </style>

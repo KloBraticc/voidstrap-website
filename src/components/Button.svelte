@@ -30,12 +30,12 @@
   .btn { display: inline-flex; align-items: center; gap: .5rem; text-decoration: none; cursor: pointer; }
   .btn svg { width: 15px; height: 15px; flex: none; }
   .chip { background: #18181a; border: 1px solid #262629; color: #e8e8ea; padding: .5rem .8rem; border-radius: 4px; font-size: .9rem; font-weight: 500; }
-  .chip:hover { background: #222225; border-color: #3a3a3e; }
+  .chip:hover, .chip:active { background: #222225; border-color: #3a3a3e; }
   .solid, .ghost { font: 800 .95rem var(--display); font-stretch: 88%; text-transform: uppercase; letter-spacing: .03em; padding: .7rem 1.2rem; min-width: 150px; justify-content: center; border-radius: 6px; }
   .solid svg, .ghost svg { width: 19px; height: 19px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
   .solid, .ghost { text-shadow: 0 1px 2px rgba(0,0,0,.3); }
   .solid { background: var(--accent); color: #fff; border: 1px solid rgba(255,255,255,.18); }
-  .solid:hover { background: #b993ff; }
+  .solid:hover, .solid:active { background: #b993ff; }
   .ghost { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(8px); }
-  .ghost:hover { background: rgba(255,255,255,.18); }
+  .ghost:hover, .ghost:active { background: rgba(255,255,255,.18); }
 </style>

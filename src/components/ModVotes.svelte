@@ -16,7 +16,7 @@
 <style>
   .votes { display: inline-flex; align-items: center; gap: .25rem; }
   button { display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .5rem; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #a9a9b2; font: 600 .8rem var(--sans); cursor: pointer; }
-  button:hover:not(:disabled) { background: rgba(255,255,255,.07); color: #fff; }
+  button:hover:not(:disabled), button:active:not(:disabled) { background: rgba(255,255,255,.07); color: #fff; }
   button[aria-pressed="true"] { color: var(--accent); background: rgba(167,123,255,.14); }
   button:disabled { opacity: .5; cursor: not-allowed; }
   svg { width: 16px; height: 16px; }

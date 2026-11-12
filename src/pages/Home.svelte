@@ -12,12 +12,22 @@
     ["Mods", "#mods"]
   ];
   let installDialog;
+  let ready = $state(false);
+
+  $effect(() => {
+    const img = new Image();
+    const done = () => (ready = true);
+    const timer = setTimeout(done, 2500);
+    img.src = "/assets/img/hero.webp";
+    img.decode().then(done, done).finally(() => clearTimeout(timer));
+    return () => clearTimeout(timer);
+  });
 </script>
 
 <div class="frame" id="top">
   <Topbar />
 
-  <section class="hero">
+  <section class="hero" class:ready>
     <div class="hero-bg" aria-hidden="true"></div>
     <div class="hero-inner">
       <p class="tag">Another day of a Bloxstrap fork, <em>just with way more control.</em></p>
@@ -83,6 +93,9 @@
   .hero-bg { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,11,13,.35) 0%, rgba(11,11,13,.55) 55%, var(--bg) 100%), radial-gradient(ellipse at center, rgba(11,11,13,0) 30%, rgba(11,11,13,.75) 100%), url("/assets/img/hero.webp") center / cover no-repeat; }
   .hero-inner { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; }
   .tag, .cta, .chips { opacity: 0; animation: rise .8s cubic-bezier(.2,.8,.2,1) forwards; }
+  .hero:not(.ready) :is(.tag, .cta, .chips, .meta) { animation-play-state: paused; }
+  .hero-bg { opacity: 0; transition: opacity .6s ease; }
+  .hero.ready .hero-bg { opacity: 1; }
   .tag { animation-delay: .26s; }
   .cta { animation-delay: .34s; }
   .chips { animation-delay: .42s; }
@@ -108,9 +121,9 @@
   .picker { border: 1px solid var(--line); background: var(--panel); padding: 1.2rem; display: grid; gap: .9rem; min-width: 0; }
   .tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; }
   .tabs button { font-family: var(--mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; background: transparent; color: var(--muted); border: 0; border-radius: 6px; padding: .48rem .5rem; cursor: pointer; white-space: nowrap; text-align: center; }
-  .tabs button:hover { background: var(--accent); color: #0c0c0d; }
+  .tabs button:hover, .tabs button:active { background: var(--accent); color: #0c0c0d; }
   .tabs button.on { background: #fff; color: #0c0c0d; }
-  .tabs button.on:hover { background: var(--accent); color: #0c0c0d; }
+  .tabs button.on:hover, .tabs button.on:active { background: var(--accent); color: #0c0c0d; }
   .cmd { display: flex; border: 1px solid var(--line); background: #0c0c0d; min-width: 0; }
   .cmd code { flex: 1; min-width: 0; padding: .9rem 1rem; font: .8rem var(--mono); overflow-x: auto; white-space: nowrap; color: #e3d6ff; }
   .picker small { color: var(--muted); }
@@ -122,19 +135,19 @@
   .banner b { color: #fff; font-weight: 600; }
   .banner img { width: 96px; height: 96px; filter: drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
   .get-it { display: inline-flex; align-items: center; gap: .6rem; padding: 1rem 2.4rem; border-radius: 999px; border: 2px solid rgba(255,255,255,.7); background: rgba(255,255,255,.16); color: #fff; text-decoration: none; font: 800 1.5rem var(--display); font-stretch: 88%; letter-spacing: .03em; text-transform: uppercase; }
-  .get-it:hover { background: rgba(255,255,255,.26); }
+  .get-it:hover, .get-it:active { background: rgba(255,255,255,.26); }
   .get-it svg { width: 22px; height: 22px; }
   @media (max-width: 860px) { .banner { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 2rem 1.5rem; gap: 1.4rem; } }
   footer { background: var(--bg); padding: 2.6rem 2rem 2rem; user-select: none; }
   .socials { display: flex; justify-content: center; gap: 2.2rem; margin-bottom: 1.8rem; }
   .socials a { color: #fff; }
-  .socials a:hover { color: var(--accent); }
+  .socials a:hover, .socials a:active { color: var(--accent); }
   .socials svg { width: 22px; height: 22px; }
   .fbar { max-width: 1280px; margin: 0 auto; padding: 0 3rem; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1.2rem 2rem; font-size: 1rem; }
   .fcopy { justify-self: start; display: inline-flex; align-items: center; gap: .7rem; color: #e8e8ea; }
   .flinks { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem 1.6rem; }
   .flinks a { color: #e8e8ea; text-decoration: none; }
-  .flinks a:hover { color: var(--accent); }
+  .flinks a:hover, .flinks a:active { color: var(--accent); }
   @media (max-width: 1100px) { .fbar { grid-template-columns: 1fr; justify-items: center; text-align: center; } .fcopy { justify-self: center; } }
 
   @media (max-width: 860px) {
