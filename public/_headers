@@ -57,3 +57,7 @@
 /vote/*
   ! Cross-Origin-Embedder-Policy
   X-Robots-Tag: noindex
+
+/join
+  ! Cross-Origin-Embedder-Policy
+  X-Robots-Tag: noindex
