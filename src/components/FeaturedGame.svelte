@@ -3,11 +3,26 @@
   let playing = $state(false);
   const canPlay = typeof document !== "undefined" && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') !== "";
 
+  let clip = $state(null);
+
   $effect(() => {
+    let url = null;
+    let alive = true;
     fetch("/api/featured")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d && d.video) game = d; })
+      .then((d) => {
+        if (!alive || !d || !d.video) return;
+        game = d;
+        if (!canPlay) return;
+        return fetch(d.video)
+          .then((r) => (r.ok ? r.blob() : null))
+          .then((b) => { if (alive && b && b.size) clip = url = URL.createObjectURL(b); });
+      })
       .catch(() => {});
+    return () => {
+      alive = false;
+      if (url) URL.revokeObjectURL(url);
+    };
   });
 
   const compact = (n) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
@@ -16,7 +31,7 @@
 {#if game}
   <div class="featured">
     {#if game.thumbnail}<img class="poster" src={game.thumbnail} alt="" draggable="false" />{/if}
-    {#if canPlay}<video class:on={playing} src={game.video} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback ontimeupdate={(e) => { if (e.currentTarget.currentTime > 0.05 && e.currentTarget.videoWidth) playing = true; }} onerror={() => (playing = false)}></video>{#if !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
+    {#if canPlay}{#if clip}<video class:on={playing} src={clip} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback ontimeupdate={(e) => { if (e.currentTarget.currentTime > 0.05 && e.currentTarget.videoWidth) playing = true; }} onerror={() => (playing = false)}></video>{/if}{#if !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
     <div class="shade"></div>
     <div class="info">
       <span class="pill">Most played right now</span>

@@ -212,7 +212,7 @@ export async function onRequestGet(context) {
       siteKey: env.TURNSTILE_SITE_KEY || null,
       totals: totals.results || [],
       votes: Object.fromEntries((mine?.results || []).map((row) => [row.mod_id, row.vote]))
-    });
+    }, 200, "private, max-age=20");
   } catch {
     return fail(503, "Voting is unavailable.");
   }
