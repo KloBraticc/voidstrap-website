@@ -26,7 +26,7 @@ function networkOf(ip) {
   const right = tail ? tail.split(":") : [];
   if (left.length + right.length > 8 || [...left, ...right].some((part) => !/^[0-9a-f]{1,4}$/.test(part))) return null;
   const full = [...left, ...Array(8 - left.length - right.length).fill("0"), ...right];
-  return full.slice(0, 4).map((part) => part.padStart(4, "0")).join(":") + "::/64";
+  return full.slice(0, 3).map((part) => part.padStart(4, "0")).join(":") + ":" + full[3].padStart(4, "0").slice(0, 2) + "00::/56";
 }
 
 async function hmac(secret, purpose, value) {

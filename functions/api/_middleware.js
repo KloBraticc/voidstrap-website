@@ -26,7 +26,8 @@ const deny = (status, retry) => new Response(JSON.stringify({ error: status === 
 function clientKey(request) {
   const ip = request.headers.get("CF-Connecting-IP") || "";
   if (!ip.includes(":")) return ip;
-  return ip.toLowerCase().split(":").slice(0, 4).join(":");
+  const parts = ip.toLowerCase().split("::")[0].split(":");
+  return parts.slice(0, 3).join(":") + ":" + (parts[3] || "0").padStart(4, "0").slice(0, 2);
 }
 
 function count(key, limit, now) {
