@@ -52,7 +52,7 @@
 </dialog>
 
 <style>
-  dialog { width: min(1220px, calc(100% - 28px)); max-height: calc(100dvh - 28px); padding: 1.6rem 1.8rem 1.2rem; color: var(--text); background: #0e0e11; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; box-shadow: 0 24px 60px rgba(0,0,0,.55); animation: menu-in .18s ease-out; }
+  dialog { width: min(1220px, calc(100% - 28px)); max-height: calc(100dvh - 28px); padding: 1.6rem 1.8rem 1.2rem; color: var(--text); background: #0e0e11; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; box-shadow: 0 24px 60px rgba(0,0,0,.55); animation: menu-in .18s ease-out; user-select: none; -webkit-user-select: none; }
   dialog::backdrop { background: rgba(0,0,0,.35); }
   h2 { margin: 0 0 1rem; color: #fff; font: 600 1.1rem var(--sans); }
   .commands { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 1.5rem 2rem; }
@@ -64,7 +64,7 @@
   h4 { margin: 0 0 .25rem; font: 600 1.1rem var(--sans); color: #fff; }
   .package p, .android { margin: 0; color: #a9a9b2; font-size: .95rem; line-height: 1.45; }
   .command { display: flex; min-width: 0; margin-top: .6rem; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; background: rgba(255,255,255,.04); }
-  .command code { flex: 1; min-width: 0; padding: .65rem; overflow-x: auto; white-space: nowrap; color: #e3d6ff; font: .75rem var(--mono); }
+  .command code { flex: 1; min-width: 0; padding: .65rem; overflow-x: auto; white-space: nowrap; color: #e3d6ff; font: .75rem var(--mono); user-select: text; -webkit-user-select: text; }
   .command button { padding: .6rem; border: 0; border-left: 1px solid rgba(255,255,255,.1); background: transparent; color: #fff; font: 600 .8rem var(--sans); cursor: pointer; }
   .command button:hover { background: rgba(255,255,255,.08); }
   .status:empty { display: none; }
