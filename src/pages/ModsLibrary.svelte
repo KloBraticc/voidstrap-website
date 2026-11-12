@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import Topbar from "../components/Topbar.svelte";
+  import ModVotes from "../components/ModVotes.svelte";
 
   const repo = "KloBraticc/voidstrap-mods-library";
   const raw = `https://raw.githubusercontent.com/${repo}`;
@@ -10,6 +11,13 @@
   let status = $state("loading");
   let query = $state("");
   let sort = $state("featured");
+  let trust = $state("all");
+  let connection = $state("all");
+  let voteTotals = $state({});
+  let myVotes = $state({});
+  let votePending = $state({});
+  let votingAvailable = $state(false);
+  let voteError = $state("");
   let sortOpen = $state(false);
   const sortOptions = [["featured", "Featured"], ["updated", "Recently updated"], ["name", "Name"]];
   const pick = (v) => { sort = v; sortOpen = false; };
@@ -22,7 +30,12 @@
 
   const shown = $derived.by(() => {
     const q = query.trim().toLowerCase();
-    const list = mods.filter((m) => !q || [m.name, m.description, m.login, ...(m.tags || [])].join(" ").toLowerCase().includes(q));
+    const list = mods.filter((m) => {
+      const matchesQuery = !q || [m.name, m.description, m.login, ...(m.tags || [])].join(" ").toLowerCase().includes(q);
+      const matchesTrust = trust === "all" || (trust === "verified" ? m.verified : trust === "trusted" ? !m.verified && m.trusted : !m.verified && !m.trusted);
+      const matchesConnection = connection === "all" || (connection === "offline" ? !(m.network || []).length : (m.network || []).length > 0);
+      return matchesQuery && matchesTrust && matchesConnection;
+    });
     return [...list].sort(sorters[sort]);
   });
 
@@ -30,10 +43,63 @@
 
   let selectedId = $state(new URLSearchParams(location.search).get("mod"));
   const selected = $derived(selectedId ? mods.find((m) => m.id === selectedId) : null);
-  const size = (b) => (b < 1024 ? b + " B" : (b / 1024).toFixed(1).replace(/\.0$/, "") + " KB");
+  let detailTab = $state("changelog");
+  let changes = $state([]);
+  let changesStatus = $state("loading");
+  let versions = $state([]);
+  let versionsStatus = $state("loading");
+
+  $effect(() => {
+    const mod = selected;
+    if (!mod) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ path: `mods/${mod.name}`, sha: commit, per_page: "30" });
+    changes = [];
+    versions = [];
+    changesStatus = "loading";
+    versionsStatus = "loading";
+
+    async function loadHistory() {
+      const history = [];
+      params.set("per_page", "100");
+      let page = 1;
+      let entries;
+      do {
+        params.set("page", String(page++));
+        const response = await fetch(`https://api.github.com/repos/${repo}/commits?${params}`, { signal: controller.signal });
+        if (!response.ok) throw new Error(String(response.status));
+        entries = await response.json();
+        history.push(...entries);
+      } while (entries.length === 100);
+      changes = history;
+      changesStatus = "ready";
+
+      const found = new Map();
+      for (let i = 0; i < history.length; i += 10) {
+        const batch = await Promise.all(history.slice(i, i + 10).map(async (change) => {
+          const response = await fetch(`${raw}/${change.sha}/mods/${encodeURIComponent(mod.name)}/.voidstrap-mod/plugin.json`, { signal: controller.signal });
+          if (response.status === 404) return null;
+          if (!response.ok) throw new Error(String(response.status));
+          const manifest = await response.json();
+          return manifest.version ? { version: manifest.version, date: change.commit.author.date, sha: change.sha } : null;
+        }));
+        for (const version of batch) if (version) found.set(version.version, version);
+      }
+      versions = [...found.values()];
+      versionsStatus = "ready";
+    }
+
+    loadHistory().catch((error) => {
+      if (error.name === "AbortError") return;
+      if (changesStatus === "loading") changesStatus = "error";
+      versionsStatus = "error";
+    });
+    return () => controller.abort();
+  });
 
   function open(e, m) {
     e.preventDefault();
+    detailTab = "changelog";
     history.pushState(null, "", "/mods?mod=" + encodeURIComponent(m.id));
     selectedId = m.id;
     scrollTo({ top: 0, behavior: "instant" });
@@ -46,9 +112,82 @@
   }
 
   const date = (iso) => new Date(iso).toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
+  const cleanMessage = (message) => message.replace(/^Co-authored-by:.*$/gim, "").replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email removed]").trim();
+
+  const VOTE_CACHE = "voidstrap-mod-vote-cache";
+
+  function saveVoteCache() {
+    try { localStorage.setItem(VOTE_CACHE, JSON.stringify({ totals: voteTotals, votes: myVotes, at: Date.now() })); } catch {}
+  }
+
+  async function voteRequest(init) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      return await fetch("/api/mod-votes", { ...init, credentials: "same-origin", signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function loadVotes() {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await voteRequest({});
+        if (response.ok) {
+          const data = await response.json();
+          voteTotals = Object.fromEntries((data.totals || []).map((item) => [item.mod_id, item]));
+          myVotes = data.votes && typeof data.votes === "object" ? data.votes : {};
+          votingAvailable = true;
+          saveVoteCache();
+          return;
+        }
+        if (response.status < 500 && response.status !== 429) break;
+      } catch {}
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    votingAvailable = false;
+  }
+
+  async function vote(modId, value) {
+    if (votePending[modId] || !votingAvailable) return;
+    votePending[modId] = true;
+    voteError = "";
+    try {
+      const response = await voteRequest({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modId, vote: value })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        voteError = response.status === 429 ? "Too many votes. Please wait a moment and try again." : "Could not save your vote. Please try again later.";
+        if (response.status >= 500) votingAvailable = false;
+        return;
+      }
+      voteTotals[modId] = { mod_id: modId, likes: data.likes, dislikes: data.dislikes };
+      if (data.vote) myVotes[modId] = data.vote;
+      else delete myVotes[modId];
+      saveVoteCache();
+    } catch {
+      voteError = "Could not save your vote. Please try again later.";
+    } finally {
+      votePending[modId] = false;
+    }
+  }
 
   onMount(async () => {
     addEventListener("popstate", () => (selectedId = new URLSearchParams(location.search).get("mod")));
+    try {
+      localStorage.removeItem("voidstrap-voter-id");
+      localStorage.removeItem("voidstrap-mod-votes");
+      const cached = JSON.parse(localStorage.getItem(VOTE_CACHE) || "null");
+      if (cached && Date.now() - cached.at < 7 * 86400000) {
+        voteTotals = cached.totals || {};
+        myVotes = cached.votes || {};
+      }
+    } catch {}
+    loadVotes();
     try {
       const r = await fetch(`${raw}/index/index.json`, { cache: "no-cache" });
       if (!r.ok) throw new Error(String(r.status));
@@ -81,37 +220,81 @@
     {@const m = selected}
     <section class="detail">
       <a class="back" href="/mods" onclick={close}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Back to the library</a>
-      <div class="dgrid">
-        <div class="dmain">
-          <div class="dhead">
-            <div class="ico big">{@render icon(m)}</div>
-            <div class="dtitle">
-              <h1>{m.name}</h1>
-              <div class="name">{@render badges(m)}</div>
-            </div>
-          </div>
-          <p class="dsum">{m.description || "No description."}</p>
-          <div class="btns">
-            <a class="btn accent lg" href="voidstrap://mods/install/{m.id}" title="Opens Voidstrap and installs this mod"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1zM4 17a1 1 0 0 1 1 1v1h14v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1z"/></svg>Install</a>
-            <a class="btn lg" href="https://github.com/{repo}/tree/{commit}/mods/{m.name}" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.1-1.47-1.1-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>Source</a>
-          </div>
-          <h4>Websites it contacts</h4>
-          <p class="dtxt">{(m.network || []).length ? m.network.join(", ") : "Works offline"}{#if (m.permissions || []).includes("roblox-account")}<br />Uses your Roblox account (read only, never sees your login){/if}</p>
-          <h4>Files</h4>
-          <ul class="files">
-            {#each m.files || [] as f}<li><span>{f.path}</span><small>{size(f.size)}</small></li>{/each}
-          </ul>
+      <div class="detail-header">
+        <div class="ico big">{@render icon(m)}</div>
+        <div class="detail-heading">
+          <h1>{m.name}</h1>
+          <p>{m.description || "No description."}</p>
+          <div class="detail-meta"><span>by @{m.login}</span>{@render badges(m)}</div>
+          <ModVotes modId={m.id} totals={voteTotals[m.id]} selected={myVotes[m.id]} pending={votePending[m.id]} available={votingAvailable} onvote={vote} />
         </div>
-        <aside class="dside">
-          <div><small>Version</small><b>{m.version}</b></div>
-          <div><small>Updated</small><b>{date(m.updated || m.created)}</b></div>
-          <div><small>Creator</small><b>@{m.login}</b></div>
-          {#if (m.tags || []).length}<div><small>Tags</small><b>{m.tags.join(", ")}</b></div>{/if}
-          <div><small>Trust</small><b class="trust">{m.verified ? "Reviewed and verified by the maintainer." : m.trusted ? "Made by an author the maintainer trusts." : "Only automated checks looked at this mod. Install it only if you trust the author."}</b></div>
+        <a class="btn accent lg" href="voidstrap://mods/install/{m.id}" title="Opens Voidstrap and installs this mod">Install</a>
+      </div>
+      <div class="detail-layout">
+        <div class="detail-content">
+          {#if voteError}<p class="vote-error" role="alert">{voteError}</p>{/if}
+          <div class="detail-tabs" class:versions-active={detailTab === "versions"} role="tablist" aria-label="Mod information">
+            <button type="button" role="tab" aria-selected={detailTab === "changelog"} class:active={detailTab === "changelog"} onclick={() => (detailTab = "changelog")}>Changelog</button>
+            <button type="button" role="tab" aria-selected={detailTab === "versions"} class:active={detailTab === "versions"} onclick={() => (detailTab = "versions")}>Versions</button>
+          </div>
+          {#if detailTab === "changelog"}
+            <section class="history" aria-label="Changelog">
+              {#if changesStatus === "loading"}
+                <p class="empty">Loading changelog...</p>
+              {:else if changesStatus === "error"}
+                <p class="empty">The changelog could not be loaded. <a href="https://github.com/{repo}/commits/main/mods/{encodeURIComponent(m.name)}">View history on GitHub</a>.</p>
+              {:else if changes.length === 0}
+                <p class="empty">No changes are available yet.</p>
+              {:else}
+                {#each changes as change (change.sha)}
+                  <article class="change">
+                    <div class="change-heading"><a href={change.html_url} rel="noopener noreferrer">{cleanMessage(change.commit.message.split("\n")[0])}</a><span>{date(change.commit.author.date)}</span></div>
+                    {#if cleanMessage(change.commit.message.split("\n").slice(1).join("\n"))}<p>{cleanMessage(change.commit.message.split("\n").slice(1).join("\n"))}</p>{/if}
+                  </article>
+                {/each}
+              {/if}
+            </section>
+          {:else}
+            <section class="versions" aria-label="Versions">
+              <div class="version-heading"><span>Version</span><span>Updated</span><span></span></div>
+              {#if versionsStatus === "loading"}
+                <p class="version-message">Loading versions...</p>
+              {:else if versionsStatus === "error"}
+                <p class="version-message">Version history could not be loaded. Please try again later.</p>
+              {:else if versions.length === 0}
+                <p class="version-message">No version history is available yet.</p>
+              {:else}
+                {#each versions as version (version.version)}
+                  <div class="version-row"><strong>{version.version}</strong><span>{date(version.date)}</span>{#if version.version === m.version}<a class="btn accent" href="voidstrap://mods/install/{m.id}">Install</a>{:else}<a class="btn" href="https://github.com/{repo}/tree/{version.sha}/mods/{m.name}" rel="noopener noreferrer">View source</a>{/if}</div>
+                {/each}
+              {/if}
+            </section>
+          {/if}
+        </div>
+        <aside class="detail-sidebar">
+          <section><h2>Mod information</h2><small>Creator</small><b>@{m.login}</b><small>Trust</small><p>{m.verified ? "Reviewed and verified by the maintainer." : m.trusted ? "Made by an author the maintainer trusts." : "Only automated checks looked at this mod. Install it only if you trust the author."}</p><small>Websites it contacts</small><p>{(m.network || []).length ? m.network.join(", ") : "Works offline"}{#if (m.permissions || []).includes("roblox-account")}<br />Uses your Roblox account (read only, never sees your login){/if}</p></section>
+          <section><h2>Links</h2><a href="https://github.com/{repo}/tree/{commit}/mods/{m.name}" rel="noopener noreferrer">View source</a></section>
+          {#if (m.tags || []).length}<section><h2>Tags</h2><div class="tags">{#each m.tags as tag}<span class="tag">{tag}</span>{/each}</div></section>{/if}
         </aside>
       </div>
     </section>
   {:else}
+  <div class="library">
+  <aside class="filters" aria-label="Filter mods">
+    <section class="filter-group">
+      <h2>Trust</h2>
+      {#each [["all", "All mods"], ["verified", "Verified"], ["trusted", "Trusted author"], ["unverified", "Not verified"]] as [value, label]}
+        <button type="button" class:active={trust === value} aria-pressed={trust === value} onclick={() => (trust = value)}>{label}</button>
+      {/each}
+    </section>
+    <section class="filter-group">
+      <h2>Connection</h2>
+      {#each [["all", "All mods"], ["offline", "Works offline"], ["online", "Contacts websites"]] as [value, label]}
+        <button type="button" class:active={connection === value} aria-pressed={connection === value} onclick={() => (connection = value)}>{label}</button>
+      {/each}
+    </section>
+  </aside>
+  <main class="library-main">
   <section class="head">
     <div class="tools">
       <input type="search" placeholder="Search mods" bind:value={query} aria-label="Search mods" />
@@ -133,6 +316,7 @@
   </section>
 
   <div class="results">
+  {#if voteError}<p class="vote-error" role="alert">{voteError}</p>{/if}
   {#if status === "loading"}
     <div class="list" aria-busy="true" aria-label="Loading mods">
       {#each Array(6) as _}
@@ -146,7 +330,7 @@
   {:else if status === "error"}
     <p class="note">The library could not be loaded right now. <a href="https://github.com/{repo}" rel="noopener noreferrer">Browse it on GitHub</a>.</p>
   {:else if shown.length === 0}
-    <p class="note">No mods match your search.</p>
+    <p class="note">No mods match your search and filters.</p>
   {:else}
     <div class="list">
       {#each shown as m (m.id)}
@@ -154,10 +338,13 @@
           <div class="ico">{@render icon(m)}</div>
           <div class="info">
             <div class="name">
-              <b>{m.name}</b>
+              <a class="mod-title" href="/mods?mod={encodeURIComponent(m.id)}" onclick={(e) => open(e, m)}>{m.name}</a>
               {@render badges(m)}
             </div>
             <p>{m.description || "No description."}</p>
+            {#if (m.tags || []).length}
+              <div class="tags" aria-label="Tags">{#each m.tags as tag}<span class="tag">{tag}</span>{/each}</div>
+            {/if}
             <div class="meta">
               <span class="who">@{m.login}</span>
               <span>{(m.network || []).length ? `Contacts: ${m.network.join(", ")}` : "Works offline"}</span>
@@ -166,6 +353,7 @@
           </div>
           <div class="side">
             <span class="ver"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg>{m.version}</span>
+            <ModVotes modId={m.id} totals={voteTotals[m.id]} selected={myVotes[m.id]} pending={votePending[m.id]} available={votingAvailable} onvote={vote} />
             <div class="btns">
               <a class="btn" href="/mods?mod={encodeURIComponent(m.id)}" onclick={(e) => open(e, m)}>View</a>
               <a class="btn accent" href="voidstrap://mods/install/{m.id}" title="Opens Voidstrap and installs this mod"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1zM4 17a1 1 0 0 1 1 1v1h14v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1z"/></svg>Install</a>
@@ -176,6 +364,8 @@
     </div>
   {/if}
   </div>
+  </main>
+  </div>
   {/if}
 </div>
 
@@ -185,35 +375,63 @@
   .detail { padding: 1.5rem 0 2rem; }
   .back { display: inline-flex; align-items: center; gap: .35rem; color: #c9c9cf; text-decoration: none; font-size: .92rem; margin-bottom: 1.4rem; }
   .back svg { width: 16px; height: 16px; }
-  .dgrid { display: grid; grid-template-columns: 1fr 300px; gap: 1.2rem; align-items: start; }
-  .dmain, .dside { padding: 1.6rem; border-radius: 8px; background: #0e0e11; border: 1px solid rgba(255,255,255,.1); }
-  .dhead { display: flex; align-items: center; gap: 1.1rem; }
+  .detail-header { display: flex; align-items: flex-start; gap: 1rem; padding-bottom: 1.2rem; border-bottom: 1px solid rgba(255,255,255,.1); }
   .ico.big { width: 96px; height: 96px; flex: none; }
   .ico.big svg { width: 34px; height: 34px; }
-  .dtitle { display: grid; gap: .5rem; min-width: 0; }
-  .dtitle h1 { margin: 0; font: 900 clamp(1.6rem, 3vw, 2.2rem) var(--display); font-stretch: 88%; line-height: 1.05; overflow-wrap: anywhere; }
-  .dsum { margin: 1.2rem 0; color: #c9c9cf; font-size: 1.02rem; line-height: 1.55; }
+  .detail-heading { flex: 1; min-width: 0; }
+  .detail-heading h1 { margin: 0; font: 800 1.8rem var(--display); overflow-wrap: anywhere; }
+  .detail-heading p { margin: .2rem 0 .5rem; color: #a9a9b2; line-height: 1.4; }
+  .detail-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; color: #a9a9b2; font-size: .85rem; }
   .btn.lg { height: 42px; padding: 0 1.4rem; font-size: .9rem; }
-  .btn.lg svg { width: 16px; height: 16px; }
-  .dmain h4 { margin: 1.8rem 0 .5rem; font: 700 .95rem var(--display); color: var(--accent); }
-  .dtxt { margin: 0; color: #a9a9b2; font-size: .92rem; }
-  .files { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
-  .files li { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem .7rem; border-radius: 5px; background: rgba(255,255,255,.03); font: .8rem var(--mono); color: #c9c9cf; }
-  .files span { overflow-wrap: anywhere; }
-  .files small { color: #7c7c86; flex: none; }
-  .dside { display: grid; gap: 1.1rem; }
-  .dside div { display: grid; gap: .2rem; }
-  .dside small { font: 600 .85rem var(--display); color: #7c7c86; }
-  .dside b { color: #fff; font-weight: 600; font-size: .95rem; }
-  .dside b.trust { color: #a9a9b2; font-weight: 400; font-size: .88rem; line-height: 1.5; }
-  @media (max-width: 860px) { .dgrid { grid-template-columns: 1fr; } .dhead { align-items: flex-start; } .ico.big { width: 64px; height: 64px; } }
-  .head { padding: 1.5rem 0 1rem; }
+  .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 1.2rem; padding-top: 1rem; align-items: start; }
+  .detail-content { min-width: 0; }
+  .detail-tabs { position: relative; display: inline-grid; grid-template-columns: repeat(2, 1fr); padding: .3rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; background: #18181c; isolation: isolate; }
+  .detail-tabs::before { content: ""; position: absolute; z-index: -1; top: .3rem; bottom: .3rem; left: .3rem; width: calc((100% - .6rem) / 2); border-radius: 999px; background: rgba(167,123,255,.22); transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+  .detail-tabs.versions-active::before { transform: translateX(100%); }
+  .detail-tabs button { padding: .55rem 1rem; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 700 .85rem var(--sans); cursor: pointer; transition: color .25s ease; }
+  .detail-tabs button.active { color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { .detail-tabs::before, .detail-tabs button { transition: none; } }
+  .history, .versions, .detail-sidebar section { border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: #0e0e11; }
+  .history { padding: 1.4rem; background: #18181c; }
+  .change { position: relative; padding: 0 0 1.5rem 1.4rem; border-left: 3px solid var(--accent); }
+  .change:last-child { padding-bottom: 0; }
+  .change::before { content: ""; position: absolute; top: .3rem; left: -7px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); }
+  .change-heading { display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: baseline; }
+  .change-heading a { color: #fff; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+  .change-heading a:hover { text-decoration: underline; }
+  .change-heading span, .change p, .empty { color: #a9a9b2; font-size: .9rem; }
+  .change p { margin: .5rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .empty { margin: 0; }
+  .empty a { color: var(--accent); }
+  .versions { overflow: hidden; }
+  .version-heading, .version-row { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 1rem; padding: .9rem 1rem; }
+  .version-heading { color: #a9a9b2; font-size: .85rem; background: rgba(255,255,255,.04); }
+  .version-row { border-top: 1px solid rgba(255,255,255,.1); }
+  .version-row span { color: #a9a9b2; font-size: .9rem; }
+  .version-message { margin: 0; padding: 1rem; color: #a9a9b2; font-size: .9rem; }
+  .detail-sidebar { display: grid; gap: .75rem; }
+  .detail-sidebar section { display: grid; gap: .35rem; padding: 1rem; }
+  .detail-sidebar h2 { margin: 0 0 .4rem; font: 700 1rem var(--sans); }
+  .detail-sidebar small { margin-top: .4rem; color: #7c7c86; font-size: .8rem; }
+  .detail-sidebar b { font-size: .9rem; }
+  .detail-sidebar p { margin: 0; color: #a9a9b2; font-size: .88rem; line-height: 1.5; overflow-wrap: anywhere; }
+  .detail-sidebar a { color: #c9c9cf; font-size: .9rem; }
+  @media (max-width: 860px) { .detail-layout { grid-template-columns: 1fr; } .detail-header { flex-wrap: wrap; } .ico.big { width: 64px; height: 64px; } }
+  .library { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: .8rem; align-items: start; padding-top: 1.5rem; }
+  .library-main { min-width: 0; }
+  .filters { display: grid; gap: .75rem; animation: rise .8s cubic-bezier(.2,.8,.2,1) .26s both; }
+  .filter-group { display: grid; gap: .2rem; padding: 1rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: #0e0e11; }
+  .filter-group h2 { margin: 0 0 .5rem; font: 700 1rem var(--sans); }
+  .filter-group button { padding: .45rem .6rem; border: 0; border-radius: 5px; background: transparent; color: #a9a9b2; font: 500 .9rem var(--sans); text-align: left; cursor: pointer; }
+  .filter-group button:hover { background: rgba(255,255,255,.05); color: #fff; }
+  .filter-group button.active { background: rgba(167,123,255,.16); color: var(--accent); }
+  .head { position: relative; z-index: 1; padding: 0 0 1rem; }
   .head, .results { opacity: 0; animation: rise .8s cubic-bezier(.2,.8,.2,1) forwards; }
   .head { animation-delay: .26s; }
   .results { animation-delay: .34s; }
   @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { .head, .results { opacity: 1; animation: none; } }
-  .tools { display: flex; gap: .7rem; flex-wrap: wrap; }
+  @media (prefers-reduced-motion: reduce) { .head, .results, .filters { opacity: 1; animation: none; } }
+  .tools { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: .7rem; }
   input { height: 42px; padding: 0 .9rem; border-radius: 6px; border: 1px solid rgba(255,255,255,.12); background: #0e0e11; color: #fff; font: inherit; font-size: .95rem; }
   input { flex: 1; min-width: 220px; }
   input:focus { outline: none; border-color: var(--accent); }
@@ -236,15 +454,18 @@
   .sk .b { width: 78px; height: 34px; }
   @keyframes shim { to { background-position: -200% 0; } }
   .note { color: #a9a9b2; }
+  .vote-error { color: #ffb5b5; font-size: .85rem; }
   .note a { color: var(--accent); }
   .list { display: grid; gap: 10px; }
   .row { display: grid; grid-template-columns: 80px 1fr auto; align-items: center; gap: 1.1rem; padding: .8rem 1rem .8rem .8rem; border-radius: 6px; background: #0e0e11; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; }
+  .row:not(.sk):hover { background: #19191e; }
   .ico { display: grid; place-items: center; width: 80px; height: 80px; border-radius: 8px; background: rgba(255,255,255,.05); color: #fff; overflow: hidden; }
   .ico img { width: 100%; height: 100%; object-fit: cover; }
   .ico svg { width: 26px; height: 26px; }
   .info { min-width: 0; display: grid; gap: .35rem; }
   .name { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
-  .name b { font: 800 1.15rem var(--display); font-stretch: 88%; letter-spacing: .02em; color: #fff; }
+  .mod-title { font: 800 1.15rem var(--display); font-stretch: 88%; letter-spacing: .02em; color: #fff; text-decoration: none; }
+  .row:hover .mod-title, .mod-title:focus-visible { text-decoration: underline; }
   .badge { display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .5rem; border-radius: 999px; font: 500 .72rem var(--mono); }
   .badge svg { width: 12px; height: 12px; }
   .badge.blue { color: #58a6ff; background: rgba(88,166,255,.15); }
@@ -253,6 +474,8 @@
   .badge.yellow { color: #d29922; background: rgba(210,153,34,.15); }
   .badge.gold { color: #f1c40f; background: rgba(241,196,15,.15); }
   .info p { margin: 0; color: #a9a9b2; font-size: .9rem; line-height: 1.4; }
+  .tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .tag { display: inline-flex; align-items: center; padding: .1rem .55rem; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; background: rgba(255,255,255,.06); color: #a9a9b2; font-size: .78rem; line-height: 1.5; }
   .meta { display: flex; flex-wrap: wrap; gap: .9rem; font-size: .78rem; color: #7c7c86; }
   .meta .who { color: #c9c9cf; font-weight: 600; }
   .side { display: grid; justify-items: end; gap: 1.1rem; }
@@ -264,7 +487,12 @@
   .btn.accent { background: var(--accent); border-color: transparent; color: #fff; }
   @media (max-width: 700px) {
     .page { padding: 0 .9rem 2rem; }
-    .tools { flex-direction: column; }
+    .detail-heading { flex-basis: calc(100% - 80px); }
+    .detail-header > .btn { margin-left: 80px; }
+    .library { grid-template-columns: 1fr; }
+    .filters { grid-template-columns: 1fr 1fr; }
+    .filter-group { padding: .8rem; }
+    .tools { grid-template-columns: 1fr; }
     .tools input { flex: none; width: 100%; min-width: 0; }
     .dd { min-width: 0; }
     .row { grid-template-columns: 52px 1fr; align-items: start; gap: .8rem; padding: .9rem; }
