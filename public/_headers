@@ -49,3 +49,11 @@
 
 /mods/*
   ! Cross-Origin-Embedder-Policy
+
+/vote
+  ! Cross-Origin-Embedder-Policy
+  X-Robots-Tag: noindex
+
+/vote/*
+  ! Cross-Origin-Embedder-Policy
+  X-Robots-Tag: noindex

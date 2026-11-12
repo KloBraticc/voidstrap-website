@@ -64,8 +64,9 @@ export async function onRequest(context) {
   if (!limit) return deny(method === "GET" || method === "POST" ? 404 : 405);
   if (url.search.length > 256 || url.pathname.length > 64 || (request.headers.get("Cookie") || "").length > 4096) return deny(400);
   const agent = request.headers.get("User-Agent") || "";
-  if (agent.length < 20 || agent.length > 512 || BOT_AGENT.test(agent) || !/^Mozilla\/5\.0 /.test(agent)) return deny(403);
-  if (!request.headers.get("Accept-Language")) return deny(403);
+  const app = route === "/api/mod-votes:GET" && /^Voidstrap\/[0-9.]{1,20}$/.test(agent);
+  if (!app && (agent.length < 20 || agent.length > 512 || BOT_AGENT.test(agent) || !/^Mozilla\/5\.0 /.test(agent))) return deny(403);
+  if (!app && !request.headers.get("Accept-Language")) return deny(403);
   if (method === "POST" && (request.headers.get("Sec-Fetch-Mode") !== "cors" || request.headers.get("Sec-Fetch-Site") !== "same-origin")) return deny(403);
   const client = clientKey(request);
   if (!client) return deny(403);
