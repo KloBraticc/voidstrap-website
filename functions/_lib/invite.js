@@ -52,10 +52,10 @@ export async function lookup(placeId) {
 
 export function parse(url) {
   const q = url.searchParams;
-  const placeId = q.get("placeId") || q.get("placeid") || "";
+  const placeId = ((q.get("placeId") || q.get("placeid") || "").match(/^\s*(\d{1,20})/) || [])[1] || "";
   if (!/^\d{1,20}$/.test(placeId) || placeId === "0") return null;
-  const job = q.get("gameInstanceId") || q.get("jobId") || "";
-  const access = q.get("accessCode") || "";
+  const job = ((q.get("gameInstanceId") || q.get("jobId") || "").match(/[0-9a-f-]{36}/i) || [])[0] || "";
+  const access = ((q.get("accessCode") || "").match(/[0-9a-f-]{36}/i) || [])[0] || "";
   const launchData = (q.get("launchData") || "").slice(0, 200);
   let deeplink = `roblox://experiences/start?placeId=${placeId}`;
   let kind = "game";
