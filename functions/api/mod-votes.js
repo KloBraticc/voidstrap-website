@@ -1,6 +1,11 @@
-const MAX_BODY = 512;
+const MAX_BODY = 4096;
 const RATE_LIMIT_PER_MINUTE = 20;
 const RATE_LIMIT_PER_DAY = 300;
+const MOD_LIMIT_PER_MINUTE = 60;
+const MOD_LIMIT_PER_DAY = 1000;
+const SITE_LIMIT_PER_MINUTE = 300;
+const SITE_PAUSE_MS = 5 * 60000;
+const TURNSTILE_VERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const LIBRARY_URL = "https://raw.githubusercontent.com/KloBraticc/voidstrap-mods-library/index/index.json";
 const MOD_ID = /^[0-9]{1,20}\/[a-z0-9][a-z0-9._-]{0,99}$/i;
 const encoder = new TextEncoder();
@@ -113,6 +118,45 @@ async function rateLimited(env, voter, context) {
   return !row || row.attempts > RATE_LIMIT_PER_MINUTE || row.day_attempts > RATE_LIMIT_PER_DAY;
 }
 
+async function humanVerified(request, env, token) {
+  if (typeof token !== "string" || token.length < 20 || token.length > 2048) return false;
+  const form = new FormData();
+  form.append("secret", env.TURNSTILE_SECRET);
+  form.append("response", token);
+  form.append("remoteip", request.headers.get("CF-Connecting-IP") || "");
+  form.append("idempotency_key", crypto.randomUUID());
+  const response = await fetch(TURNSTILE_VERIFY, { method: "POST", body: form, signal: AbortSignal.timeout(5000) });
+  if (!response.ok) return false;
+  const result = await response.json();
+  return result.success === true && result.action === "vote" && result.hostname === new URL(request.url).hostname;
+}
+
+const bump = (env, scope, window) => env.MOD_VOTES.prepare(
+  "INSERT INTO mod_vote_global (scope, window, count) VALUES (?, ?, 1) " +
+  "ON CONFLICT (scope) DO UPDATE SET count = CASE WHEN window = excluded.window THEN count + 1 ELSE 1 END, window = excluded.window " +
+  "RETURNING count"
+).bind(scope, window);
+
+async function globallyLimited(env, modId) {
+  const now = Date.now();
+  const paused = await env.MOD_VOTES.prepare("SELECT window FROM mod_vote_global WHERE scope = 'pause'").first();
+  if (paused && paused.window > now) return true;
+  const minute = Math.floor(now / 60000);
+  const day = Math.floor(now / 86400000);
+  const [modMinute, modDay, site] = await env.MOD_VOTES.batch([
+    bump(env, `mod-minute:${modId}`, minute),
+    bump(env, `mod-day:${modId}`, day),
+    bump(env, "site-minute", minute)
+  ]);
+  if ((site.results?.[0]?.count || 0) > SITE_LIMIT_PER_MINUTE) {
+    await env.MOD_VOTES.prepare(
+      "INSERT INTO mod_vote_global (scope, window, count) VALUES ('pause', ?, 0) ON CONFLICT (scope) DO UPDATE SET window = excluded.window"
+    ).bind(now + SITE_PAUSE_MS).run();
+    return true;
+  }
+  return (modMinute.results?.[0]?.count || 0) > MOD_LIMIT_PER_MINUTE || (modDay.results?.[0]?.count || 0) > MOD_LIMIT_PER_DAY;
+}
+
 export async function onRequestGet(context) {
   const { request, env } = context;
   if (!env.MOD_VOTES || !env.VOTE_RATE_SECRET) return fail(503, "Voting is unavailable.");
@@ -122,6 +166,7 @@ export async function onRequestGet(context) {
     if (voter) statements.push(env.MOD_VOTES.prepare("SELECT mod_id, vote FROM mod_votes WHERE voter_id = ?").bind(voter));
     const [totals, mine] = await env.MOD_VOTES.batch(statements);
     return json({
+      siteKey: env.TURNSTILE_SITE_KEY || null,
       totals: totals.results || [],
       votes: Object.fromEntries((mine?.results || []).map((row) => [row.mod_id, row.vote]))
     });
@@ -132,7 +177,7 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  if (!env.MOD_VOTES || !env.VOTE_RATE_SECRET) return fail(503, "Voting is unavailable.");
+  if (!env.MOD_VOTES || !env.VOTE_RATE_SECRET || !env.TURNSTILE_SECRET) return fail(503, "Voting is unavailable.");
   if (!sameOrigin(request) || !request.headers.get("Content-Type")?.toLowerCase().startsWith("application/json")) {
     return fail(403, "Invalid request.");
   }
@@ -145,6 +190,8 @@ export async function onRequestPost(context) {
       return fail(400, "Invalid request.");
     }
     if (!(await getModIds(context)).has(body.modId)) return fail(404, "Mod not found.");
+    if (!(await humanVerified(request, env, body.token))) return fail(403, "Verification failed. Please try again.");
+    if (await globallyLimited(env, body.modId)) return fail(429, "Voting is busy right now. Please try again in a few minutes.");
     const write = body.vote === 0
       ? env.MOD_VOTES.prepare("DELETE FROM mod_votes WHERE mod_id = ? AND voter_id = ?").bind(body.modId, voter)
       : env.MOD_VOTES.prepare(

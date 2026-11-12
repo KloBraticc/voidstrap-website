@@ -9,6 +9,7 @@ const GLOBAL_LIMIT = 150;
 const BAN_AFTER = 5;
 const BAN_MS = 15 * 60000;
 const MAX_ENTRIES = 50000;
+const BOT_AGENT = /bot|crawl|spider|slurp|curl|wget|python|httpie|httpx|aiohttp|requests|urllib|libwww|java\/|okhttp|go-http|node-fetch|axios|undici|got|postman|insomnia|scrapy|headless|phantom|selenium|puppeteer|playwright|electron|semrush|ahrefs|mj12|dotbot|petal|bytespider|gptbot|ccbot|claudebot|perplexity|zgrab|masscan|nmap|nikto|sqlmap|nuclei|burp|zap/i;
 const hits = new Map();
 const strikes = new Map();
 const banned = new Map();
@@ -62,6 +63,10 @@ export async function onRequest(context) {
   const limit = LIMITS[route];
   if (!limit) return deny(method === "GET" || method === "POST" ? 404 : 405);
   if (url.search.length > 256 || url.pathname.length > 64 || (request.headers.get("Cookie") || "").length > 4096) return deny(400);
+  const agent = request.headers.get("User-Agent") || "";
+  if (agent.length < 20 || agent.length > 512 || BOT_AGENT.test(agent) || !/^Mozilla\/5\.0 /.test(agent)) return deny(403);
+  if (!request.headers.get("Accept-Language")) return deny(403);
+  if (method === "POST" && (request.headers.get("Sec-Fetch-Mode") !== "cors" || request.headers.get("Sec-Fetch-Site") !== "same-origin")) return deny(403);
   const client = clientKey(request);
   if (!client) return deny(403);
   const now = Date.now();

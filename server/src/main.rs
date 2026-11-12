@@ -11,7 +11,7 @@ use tower_http::services::{ServeDir, ServeFile};
 const DIST: &str = "../dist";
 
 struct Rules {
-    headers: Vec<(String, Vec<(HeaderName, HeaderValue)>)>,
+    headers: Vec<(String, Vec<(HeaderName, Option<HeaderValue>)>)>,
     redirects: Vec<(String, String, StatusCode)>,
 }
 
@@ -27,15 +27,18 @@ fn read(name: &str) -> String {
         .unwrap_or_else(|_| panic!("{DIST}/{name} is missing, run npm run build first"))
 }
 
-fn parse_headers(text: &str) -> Vec<(String, Vec<(HeaderName, HeaderValue)>)> {
-    let mut rules: Vec<(String, Vec<(HeaderName, HeaderValue)>)> = Vec::new();
+fn parse_headers(text: &str) -> Vec<(String, Vec<(HeaderName, Option<HeaderValue>)>)> {
+    let mut rules: Vec<(String, Vec<(HeaderName, Option<HeaderValue>)>)> = Vec::new();
     for line in text.lines().filter(|l| !l.trim().is_empty()) {
         if !line.starts_with(char::is_whitespace) {
             rules.push((line.trim().to_owned(), Vec::new()));
+        } else if let (Some(name), Some(rule)) = (line.trim().strip_prefix('!'), rules.last_mut()) {
+            let name = HeaderName::try_from(name.trim().to_ascii_lowercase()).expect("invalid header name in _headers");
+            rule.1.push((name, None));
         } else if let (Some((name, value)), Some(rule)) = (line.trim().split_once(':'), rules.last_mut()) {
             let name = HeaderName::try_from(name.trim().to_ascii_lowercase()).expect("invalid header name in _headers");
             let value = HeaderValue::try_from(value.trim()).expect("invalid header value in _headers");
-            rule.1.push((name, value));
+            rule.1.push((name, Some(value)));
         }
     }
     rules
@@ -67,7 +70,14 @@ async fn apply(State(rules): State<Arc<Rules>>, req: Request, next: Next) -> Res
     for (pattern, values) in &rules.headers {
         if matches(pattern, &path) {
             for (name, value) in values {
-                headers.insert(name, value.clone());
+                match value {
+                    Some(value) => {
+                        headers.insert(name, value.clone());
+                    }
+                    None => {
+                        headers.remove(name);
+                    }
+                }
             }
         }
     }

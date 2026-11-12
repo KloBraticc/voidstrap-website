@@ -1,0 +1,5 @@
+CREATE TABLE mod_vote_global (
+  scope TEXT PRIMARY KEY,
+  window INTEGER NOT NULL,
+  count INTEGER NOT NULL
+) WITHOUT ROWID;

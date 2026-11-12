@@ -120,6 +120,52 @@
     try { localStorage.setItem(VOTE_CACHE, JSON.stringify({ totals: voteTotals, votes: myVotes, at: Date.now() })); } catch {}
   }
 
+  let siteKey = null;
+  let turnstileLoad = null;
+  let turnstileWidget = null;
+  let turnstileHost;
+
+  function loadTurnstile() {
+    turnstileLoad ??= new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("Turnstile missing")));
+      script.onerror = () => {
+        turnstileLoad = null;
+        reject(new Error("Turnstile failed to load"));
+      };
+      document.head.appendChild(script);
+    });
+    return turnstileLoad;
+  }
+
+  function clearTurnstile() {
+    if (turnstileWidget !== null && window.turnstile) window.turnstile.remove(turnstileWidget);
+    turnstileWidget = null;
+  }
+
+  async function humanToken() {
+    const turnstile = await loadTurnstile();
+    clearTurnstile();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Verification timed out")), 60000);
+      const finish = (fn) => (value) => {
+        clearTimeout(timer);
+        fn(value);
+      };
+      turnstileWidget = turnstile.render(turnstileHost, {
+        sitekey: siteKey,
+        action: "vote",
+        appearance: "interaction-only",
+        theme: "dark",
+        callback: finish(resolve),
+        "error-callback": finish(() => reject(new Error("Verification failed"))),
+        "expired-callback": finish(() => reject(new Error("Verification expired")))
+      });
+    });
+  }
+
   async function voteRequest(init) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -138,7 +184,8 @@
           const data = await response.json();
           voteTotals = Object.fromEntries((data.totals || []).map((item) => [item.mod_id, item]));
           myVotes = data.votes && typeof data.votes === "object" ? data.votes : {};
-          votingAvailable = true;
+          siteKey = typeof data.siteKey === "string" ? data.siteKey : null;
+          votingAvailable = Boolean(siteKey);
           saveVoteCache();
           return;
         }
@@ -154,14 +201,21 @@
     votePending[modId] = true;
     voteError = "";
     try {
+      let token;
+      try {
+        token = await humanToken();
+      } catch {
+        voteError = "Could not verify that you are human. Please try again.";
+        return;
+      }
       const response = await voteRequest({
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modId, vote: value })
+        body: JSON.stringify({ modId, vote: value, token })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        voteError = response.status === 429 ? "Too many votes. Please wait a moment and try again." : "Could not save your vote. Please try again later.";
+        voteError = response.status === 429 ? "Too many votes. Please wait a moment and try again." : response.status === 403 ? "Could not verify your vote. Please try again." : "Could not save your vote. Please try again later.";
         if (response.status >= 500) votingAvailable = false;
         return;
       }
@@ -172,6 +226,7 @@
     } catch {
       voteError = "Could not save your vote. Please try again later.";
     } finally {
+      clearTurnstile();
       votePending[modId] = false;
     }
   }
@@ -369,6 +424,8 @@
   {/if}
 </div>
 
+<div class="turnstile" bind:this={turnstileHost}></div>
+
 <style>
   .bg { position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(11,11,13,.35) 0%, rgba(11,11,13,.6) 50%, rgba(11,11,13,.85) 100%), url("/assets/img/hero.webp") center / cover no-repeat; }
   .page { max-width: 1480px; margin: 0 auto; padding: 0 1.5rem 3rem; user-select: none; }
@@ -454,6 +511,7 @@
   .sk .b { width: 78px; height: 34px; }
   @keyframes shim { to { background-position: -200% 0; } }
   .note { color: #a9a9b2; }
+  .turnstile { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; }
   .vote-error { color: #ffb5b5; font-size: .85rem; }
   .note a { color: var(--accent); }
   .list { display: grid; gap: 10px; }
