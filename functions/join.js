@@ -40,6 +40,7 @@ export async function onRequestGet({ request, env }) {
     .on('script[type="application/ld+json"]', { element: (el) => el.remove() })
     .transform(shell);
   const headers = new Headers(out.headers);
+  headers.delete("cross-origin-embedder-policy");
   headers.set("cache-control", "no-store");
   headers.set("x-robots-tag", "noindex");
   return new Response(out.body, { status: invite ? 200 : 400, headers });
