@@ -6,6 +6,7 @@
   const value = Number(params.get("v"));
   const valid = MOD_ID.test(modId) && [-1, 0, 1].includes(value);
   let host;
+  let closed = $state(false);
   let message = $state(done ? (params.has("error") ? "Your vote could not be saved." : "Your vote was saved.") : valid ? "Confirming your vote..." : "This vote link is not valid.");
 
   const finish = (query) => location.replace("/vote/done?" + new URLSearchParams(query));
@@ -25,7 +26,11 @@
     try {
       const info = await fetch("/api/mod-votes", { cache: "no-store", signal: AbortSignal.timeout(8000) });
       const { siteKey } = info.ok ? await info.json() : {};
-      if (!siteKey) return finish({ error: String(info.status || 503) });
+      if (!siteKey) {
+        message = "Voting is turned off right now.";
+        closed = true;
+        return;
+      }
       const turnstile = await loadTurnstile();
       const token = await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error("timeout")), 120000);
@@ -61,7 +66,7 @@
   <img src="/assets/img/brand/voidstrap-256.webp" alt="" width="56" height="56" draggable="false" />
   <p>{message}</p>
   <div bind:this={host}></div>
-  {#if done}<small>You can close this window.</small>{/if}
+  {#if done || closed}<small>You can close this window.</small>{/if}
 </main>
 
 <style>

@@ -1,4 +1,5 @@
 <script>
+  import { fly } from "svelte/transition";
   import { onMount } from "svelte";
   import Topbar from "../components/Topbar.svelte";
   import ModVotes from "../components/ModVotes.svelte";
@@ -293,7 +294,7 @@
             <button type="button" role="tab" aria-selected={detailTab === "versions"} class:active={detailTab === "versions"} onclick={() => (detailTab = "versions")}>Versions</button>
           </div>
           {#if detailTab === "changelog"}
-            <section class="history" aria-label="Changelog">
+            <section class="history" aria-label="Changelog" in:fly={{ x: -36, duration: 260, opacity: 0 }}>
               {#if changesStatus === "loading"}
                 <p class="empty">Loading changelog...</p>
               {:else if changesStatus === "error"}
@@ -310,7 +311,7 @@
               {/if}
             </section>
           {:else}
-            <section class="versions" aria-label="Versions">
+            <section class="versions" aria-label="Versions" in:fly={{ x: 36, duration: 260, opacity: 0 }}>
               <div class="version-heading"><span>Version</span><span>Updated</span><span></span></div>
               {#if versionsStatus === "loading"}
                 <p class="version-message">Loading versions...</p>
@@ -450,6 +451,7 @@
   @media (prefers-reduced-motion: reduce) { .detail-tabs::before, .detail-tabs button { transition: none; } }
   .history, .versions, .detail-sidebar section { border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: #0e0e11; }
   .history { padding: 1.4rem; background: #18181c; }
+  .detail-content { overflow-x: clip; }
   .change { position: relative; padding: 0 0 1.5rem 1.4rem; border-left: 3px solid var(--accent); }
   .change:last-child { padding-bottom: 0; }
   .change::before { content: ""; position: absolute; top: .3rem; left: -7px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); }
