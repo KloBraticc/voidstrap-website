@@ -556,8 +556,9 @@
     .row { grid-template-columns: 52px 1fr; align-items: start; gap: .8rem; padding: .9rem; }
     .ico { width: 52px; height: 52px; }
     .ico svg { width: 22px; height: 22px; }
-    .side { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
-    .btns { flex: 1; justify-content: flex-end; }
+    .side { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem .8rem; min-width: 0; }
+    .btns { flex: 1 1 100%; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .btns .btn { justify-content: center; padding: 0 .6rem; min-width: 0; max-width: none; }
     .btn { flex: 1; justify-content: center; max-width: 140px; }
   }
 </style>
