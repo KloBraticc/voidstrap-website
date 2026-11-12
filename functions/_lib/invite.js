@@ -36,6 +36,7 @@ export async function lookup(placeId) {
       name: game.name,
       creator: game.creator?.name,
       verified: !!game.creator?.hasVerifiedBadge,
+      description: typeof game.description === "string" ? game.description.trim() : "",
       playing: game.playing,
       visits: game.visits,
       maxPlayers: game.maxPlayers,

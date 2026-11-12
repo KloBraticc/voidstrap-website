@@ -90,7 +90,7 @@
   @keyframes drift-b { to { transform: translate(-35vw, -20vh) scale(.9); } }
   @keyframes drift-c { to { transform: translate(-25vw, 15vh) scale(1.2); } }
   @media (prefers-reduced-motion: reduce) { .aura i { animation: none; } }
-  .join { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 4rem 1.5rem 4rem; }
+  .join { position: relative; z-index: 1; user-select: none; -webkit-user-select: none; max-width: 1280px; margin: 0 auto; padding: 4rem 1.5rem 4rem; }
   .eyebrow { margin: 0 0 1rem; font: 800 .85rem var(--display); font-stretch: 88%; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
   .featured { position: relative; height: clamp(340px, 42vw, 520px); border-radius: 14px; overflow: hidden; background: #0b0b0d; border: 1px solid var(--line); user-select: none; }
   .skeleton { background: linear-gradient(100deg, #0e0e11 30%, #16161a 50%, #0e0e11 70%) 0 0 / 300% 100%; animation: shimmer 1.4s linear infinite; }
