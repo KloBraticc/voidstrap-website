@@ -4,9 +4,10 @@ import Home from "./pages/Home.svelte";
 import NotFound from "./pages/NotFound.svelte";
 import ModsLibrary from "./pages/ModsLibrary.svelte";
 import AppVote from "./pages/AppVote.svelte";
+import Join from "./pages/Join.svelte";
 
 const path = location.pathname.replace(/\/+$/, "") || "/";
-const page = path === "/" ? Home : path === "/mods" ? ModsLibrary : path === "/vote" || path === "/vote/done" ? AppVote : NotFound;
+const page = path === "/" ? Home : path === "/mods" ? ModsLibrary : path === "/join" ? Join : path === "/vote" || path === "/vote/done" ? AppVote : NotFound;
 
 if (page === ModsLibrary) document.title = "Mods library | Voidstrap";
 

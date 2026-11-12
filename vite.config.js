@@ -13,9 +13,11 @@ const devApi = {
   configureServer(server) {
     server.middlewares.use(async (req, res, next) => {
       const route = req.url.split("?")[0];
-      if (route !== "/api/featured" && route !== "/api/video") return next();
-      const { onRequest } = await server.ssrLoadModule(`/functions${route}.js`);
-      const out = await onRequest({ request: new Request(`http://localhost${req.url}`) });
+      if (route !== "/api/featured" && route !== "/api/video" && route !== "/api/join") return next();
+      const mod = await server.ssrLoadModule(`/functions${route}.js`);
+      const handler = mod.onRequest || mod.onRequestGet;
+      if (!handler) return next();
+      const out = await handler({ request: new Request(`http://localhost${req.url}`) }).catch(() => new Response("{}", { status: 502 }));
       res.statusCode = out.status;
       out.headers.forEach((value, key) => res.setHeader(key, value));
       res.end(Buffer.from(await out.arrayBuffer()));
