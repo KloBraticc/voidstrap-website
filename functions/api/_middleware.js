@@ -3,6 +3,7 @@ const LIMITS = {
   "/api/mod-votes:GET": 40,
   "/api/mod-votes:POST": 20,
   "/api/featured:GET": 30,
+  "/api/video:GET": 120,
   "/api/join:GET": 60
 };
 const GLOBAL_LIMIT = 150;

@@ -17,11 +17,20 @@
       sync();
     }, { rootMargin: "200px" });
     io.observe(video.parentElement);
+    const box = video.parentElement.getBoundingClientRect();
+    if (box.top < innerHeight + 200 && box.bottom > -200) { visible = seen = true; sync(); }
     document.addEventListener("visibilitychange", sync);
     return { destroy() { io.disconnect(); document.removeEventListener("visibilitychange", sync); } };
   }
 
   let failed = $state(false);
+  let proxied = $state(false);
+
+  $effect(() => {
+    if (!seen || playing || proxied) return;
+    const timer = setTimeout(() => { if (!playing) proxied = true; }, 8000);
+    return () => clearTimeout(timer);
+  });
 
   $effect(() => {
     let alive = true;
@@ -38,7 +47,7 @@
 {#if game}
   <div class="featured">
     {#if game.thumbnail}<img class="poster" src={game.thumbnail} alt="" draggable="false" decoding="async" fetchpriority="high" />{/if}
-    {#if canPlay && game.video && !failed}<video use:autoplay class:on={playing} src={seen ? game.video : undefined} autoplay muted loop playsinline preload={seen ? "auto" : "none"} disablepictureinpicture disableremoteplayback onplaying={() => (playing = true)} onerror={() => (failed = true)}></video>{#if seen && !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
+    {#if canPlay && game.video && !failed}<video use:autoplay class:on={playing} src={seen ? (proxied ? "/api/video" : game.video) : undefined} autoplay muted loop playsinline preload={seen ? "auto" : "none"} disablepictureinpicture disableremoteplayback onplaying={() => (playing = true)} onerror={() => { if (proxied) failed = true; else proxied = true; }}></video>{#if seen && !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
     <div class="shade"></div>
     <div class="info">
       <span class="pill">Most played right now</span>

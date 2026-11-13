@@ -13,7 +13,7 @@ const devApi = {
   configureServer(server) {
     server.middlewares.use(async (req, res, next) => {
       const route = req.url.split("?")[0];
-      if (route !== "/api/featured" && route !== "/api/join") return next();
+      if (route !== "/api/featured" && route !== "/api/video" && route !== "/api/join") return next();
       const mod = await server.ssrLoadModule(`/functions${route}.js`);
       const handler = mod.onRequest || mod.onRequestGet;
       if (!handler) return next();
