@@ -9,7 +9,9 @@ const json = (body, status = 200) =>
   });
 
 const CACHE_KEY = "https://voidstrapp.pages.dev/cache/featured.json";
+const TTL_MS = 15 * 60000;
 let inflight = null;
+let memo = null;
 
 async function getJson(url) {
   const res = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(6000) });
@@ -26,6 +28,14 @@ function safeThumb(value) {
   }
 }
 
+async function clipUrl(id) {
+  const asset = await getJson(`https://assetdelivery.roblox.com/v2/assetId/${id}`);
+  const location = asset.locations?.[0]?.location;
+  if (!location) return null;
+  const url = new URL(location);
+  return url.protocol === "https:" && url.hostname === "fts.rbxcdn.com" ? url.href : null;
+}
+
 async function build() {
   try {
     const sorts = await getJson(`https://apis.roblox.com/explore-api/v1/get-sorts?sessionId=${crypto.randomUUID()}`);
@@ -36,6 +46,8 @@ async function build() {
       const media = await getJson(`https://games.roblox.com/v2/games/${game.universeId}/media`);
       const clip = (media.data || []).find((m) => m.assetType === "GamePreviewVideo" && m.videoId && m.approved);
       if (!clip || !/^\d{1,20}$/.test(String(clip.videoId))) continue;
+      const video = await clipUrl(clip.videoId).catch(() => null);
+      if (!video) continue;
       const thumbs = await getJson(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${game.universeId}&size=768x432&format=Webp&countPerUniverse=1`);
       const votes = game.totalUpVotes + game.totalDownVotes;
       return json({
@@ -45,7 +57,7 @@ async function build() {
         url: `https://www.roblox.com/games/${game.rootPlaceId}`,
         launch: `roblox://experiences/start?placeId=${game.rootPlaceId}`,
         thumbnail: safeThumb(thumbs.data?.[0]?.thumbnails?.[0]?.imageUrl),
-        video: `/api/video?id=${clip.videoId}`
+        video
       });
     }
     return json({ error: "no trailer" }, 404);
@@ -55,13 +67,16 @@ async function build() {
 }
 
 export async function getFeatured(context) {
+  const now = Date.now();
+  if (memo && memo.until > now) return new Response(memo.body, memo.init);
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const key = new Request(CACHE_KEY);
   const hit = cache && (await cache.match(key));
   if (hit) return hit;
   inflight ??= build().finally(() => { inflight = null; });
   const res = (await inflight).clone();
-  if (cache) context.waitUntil(cache.put(key, res.clone()));
+  memo = { body: await res.clone().text(), init: { status: res.status, headers: res.headers }, until: now + (res.ok ? TTL_MS : 120000) };
+  if (cache && context.waitUntil) context.waitUntil(cache.put(key, res.clone()));
   return res;
 }
 

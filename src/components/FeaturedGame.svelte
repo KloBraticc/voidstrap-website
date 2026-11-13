@@ -3,26 +3,15 @@
   let playing = $state(false);
   const canPlay = typeof document !== "undefined" && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') !== "";
 
-  let clip = $state(null);
+  let failed = $state(false);
 
   $effect(() => {
-    let url = null;
     let alive = true;
     fetch("/api/featured")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!alive || !d || !d.video) return;
-        game = d;
-        if (!canPlay) return;
-        return fetch(d.video)
-          .then((r) => (r.ok ? r.blob() : null))
-          .then((b) => { if (alive && b && b.size) clip = url = URL.createObjectURL(b); });
-      })
+      .then((d) => { if (alive && d && d.name) game = d; })
       .catch(() => {});
-    return () => {
-      alive = false;
-      if (url) URL.revokeObjectURL(url);
-    };
+    return () => { alive = false; };
   });
 
   const compact = (n) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
@@ -31,7 +20,7 @@
 {#if game}
   <div class="featured">
     {#if game.thumbnail}<img class="poster" src={game.thumbnail} alt="" draggable="false" />{/if}
-    {#if canPlay}{#if clip}<video class:on={playing} src={clip} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback ontimeupdate={(e) => { if (e.currentTarget.currentTime > 0.05 && e.currentTarget.videoWidth) playing = true; }} onerror={() => (playing = false)}></video>{/if}{#if !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
+    {#if canPlay && game.video && !failed}<video class:on={playing} src={game.video} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback onplaying={() => (playing = true)} onerror={() => (failed = true)}></video>{#if !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
     <div class="shade"></div>
     <div class="info">
       <span class="pill">Most played right now</span>
@@ -53,7 +42,7 @@
   .poster, video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   video { opacity: 0; transition: opacity .6s ease; pointer-events: none; }
   video.on { opacity: 1; }
-  .loading { position: absolute; inset: 0; display: grid; place-items: center; background: #0b0b0d; }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
   .loading i { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: #c4a7ff; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 75%), linear-gradient(0deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 50%); }
