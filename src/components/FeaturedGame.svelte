@@ -2,9 +2,7 @@
   let game = $state(null);
   let playing = $state(false);
   const canPlay = typeof document !== "undefined"
-    && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') !== ""
-    && !matchMedia("(prefers-reduced-motion: reduce)").matches
-    && !navigator.connection?.saveData;
+    && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') !== "";
   let seen = $state(false);
 
   function autoplay(video) {
