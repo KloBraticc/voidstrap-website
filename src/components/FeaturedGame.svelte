@@ -1,7 +1,27 @@
 <script>
   let game = $state(null);
   let playing = $state(false);
-  const canPlay = typeof document !== "undefined" && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') !== "";
+  const canPlay = typeof document !== "undefined"
+    && document.createElement("video").canPlayType('video/webm; codecs="vp9, opus"') !== ""
+    && !matchMedia("(prefers-reduced-motion: reduce)").matches
+    && !navigator.connection?.saveData;
+  let seen = $state(false);
+
+  function autoplay(video) {
+    let visible = false;
+    const sync = () => {
+      if (visible && !document.hidden) video.play().catch(() => {});
+      else video.pause();
+    };
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) seen = true;
+      sync();
+    }, { rootMargin: "200px" });
+    io.observe(video.parentElement);
+    document.addEventListener("visibilitychange", sync);
+    return { destroy() { io.disconnect(); document.removeEventListener("visibilitychange", sync); } };
+  }
 
   let failed = $state(false);
 
@@ -19,8 +39,8 @@
 
 {#if game}
   <div class="featured">
-    {#if game.thumbnail}<img class="poster" src={game.thumbnail} alt="" draggable="false" />{/if}
-    {#if canPlay && game.video && !failed}<video class:on={playing} src={game.video} autoplay muted loop playsinline preload="auto" disablepictureinpicture disableremoteplayback onplaying={() => (playing = true)} onerror={() => (failed = true)}></video>{#if !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
+    {#if game.thumbnail}<img class="poster" src={game.thumbnail} alt="" draggable="false" decoding="async" fetchpriority="high" />{/if}
+    {#if canPlay && game.video && !failed}<video use:autoplay class:on={playing} src={seen ? game.video : undefined} autoplay muted loop playsinline preload={seen ? "auto" : "none"} disablepictureinpicture disableremoteplayback onplaying={() => (playing = true)} onerror={() => (failed = true)}></video>{#if seen && !playing}<div class="loading" aria-hidden="true"><i></i></div>{/if}{/if}
     <div class="shade"></div>
     <div class="info">
       <span class="pill">Most played right now</span>
@@ -40,14 +60,14 @@
 <style>
   .featured { position: relative; max-width: 1280px; height: clamp(320px, 38vw, 480px); margin: 0 auto; border-radius: 14px; overflow: hidden; background: #0b0b0d; user-select: none; }
   .poster, video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  video { opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+  video { opacity: 0; will-change: opacity; transition: opacity .6s ease; pointer-events: none; }
   video.on { opacity: 1; }
   .loading { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
   .loading i { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: #c4a7ff; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 75%), linear-gradient(0deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 50%); }
   .info { position: absolute; left: 2.6rem; right: 2.6rem; bottom: 2.4rem; }
-  .pill { display: inline-block; padding: .3rem .8rem; border-radius: 999px; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.2); backdrop-filter: blur(6px); font-size: .8rem; font-weight: 600; color: #fff; }
+  .pill { display: inline-block; padding: .3rem .8rem; border-radius: 999px; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.2); font-size: .8rem; font-weight: 600; color: #fff; }
   h3 { margin: .7rem 0 .4rem; font: 700 clamp(1.8rem, 3vw, 2.6rem) var(--sans); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .stats { display: flex; gap: 1rem; font-size: .95rem; color: rgba(255,255,255,.87); }
   .stats span { display: inline-flex; align-items: center; gap: .4rem; }
