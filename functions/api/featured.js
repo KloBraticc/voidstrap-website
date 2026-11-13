@@ -8,7 +8,7 @@ const json = (body, status = 200) =>
     }
   });
 
-const CACHE_KEY = "https://voidstrapp.pages.dev/cache/featured.json";
+const CACHE_KEY = "https://voidstrapp.pages.dev/cache/featured-v2.json";
 const TTL_MS = 15 * 60000;
 let inflight = null;
 let memo = null;
