@@ -46,6 +46,8 @@ The finished site lands in `dist/`.
 
 The mod library uses a dedicated Cloudflare D1 database through the `MOD_VOTES` Pages binding, with `migrations/0001_mod_votes.sql` and `migrations/0002_mod_votes_network_identity.sql` and `migrations/0003_mod_vote_global_limits.sql` applied, a strong random `VOTE_RATE_SECRET` Pages secret, and a Cloudflare Turnstile widget whose site key is the `TURNSTILE_SITE_KEY` variable and whose secret is the `TURNSTILE_SECRET` Pages secret. Every vote must pass Turnstile, each mod accepts at most 60 vote changes a minute and 1000 a day, and voting pauses site wide for five minutes when more than 300 votes arrive in a minute. Automated clients are refused before any work happens. Each network gets one vote per mod: the server identifies voters by a keyed hash of their network address, so switching browsers or clearing storage does not grant another vote. Raw IP addresses and locations are never stored or returned.
 
+The same votes cover Voidstrap News posts in the app: a vote id of `news/<id>` is accepted when that `id` exists in `feed.json` of the VoidstrapNews repository, and every other id must be a mod in the library index.
+
 A page load makes one request for all totals and the visitor's own votes. If the API is unavailable, the page shows the last saved counts and disables voting.
 
 Every `/api` route is rate limited per network in `functions/api/_middleware.js`, and repeat offenders are blocked for 15 minutes.

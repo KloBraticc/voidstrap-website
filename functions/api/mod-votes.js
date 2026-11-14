@@ -7,7 +7,8 @@ const SITE_LIMIT_PER_MINUTE = 300;
 const SITE_PAUSE_MS = 5 * 60000;
 const TURNSTILE_VERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const LIBRARY_URL = "https://raw.githubusercontent.com/KloBraticc/voidstrap-mods-library/index/index.json";
-const MOD_ID = /^[0-9]{1,20}\/[a-z0-9][a-z0-9._-]{0,99}$/i;
+const NEWS_URL = "https://raw.githubusercontent.com/KloBraticc/VoidstrapNews-/main/feed.json";
+const MOD_ID = /^(?:[0-9]{1,20}\/[a-z0-9][a-z0-9._-]{0,99}|news\/[a-z0-9][a-z0-9-]{0,99})$/i;
 const HOSTING_ASNS = new Set([9009, 16509, 14618, 15169, 396982, 8075, 14061, 16276, 24940, 63949, 20473, 45102, 37963, 132203, 31898, 13335, 209242, 60068, 212238, 136787, 9002, 51167, 197540, 62240, 174, 3223, 49981, 206092, 40021, 46562, 53667, 36352, 55286, 19531, 393406, 202425, 213230, 210644, 141039, 147049, 44477, 207137, 39351, 62041, 25369, 42831, 211252, 49453, 57858, 48282, 35916, 29802, 8100, 23470, 54600, 30633, 32613, 26347, 46606, 11878, 7979, 199524, 39572, 43357, 34549, 200651, 207990, 16247, 50613, 33387, 23033, 51852, 60781, 28753, 16265, 12876, 24961, 47583, 8560, 3842, 54290, 22612, 25820, 29838, 398101, 399629]);
 const HOSTING_ORG = /amazon|aws|google cloud|microsoft|azure|digitalocean|linode|akamai|vultr|choopa|ovh|hetzner|contabo|leaseweb|m247|datacamp|cdn77|packethub|tzulo|hostroyale|zenlayer|psychz|quadranet|colocrossing|hostinger|hostwinds|ionos|scaleway|alibaba|tencent|oracle|cloudflare|fastly|g-core|gcore|kamatera|servers\.com|serverion|worldstream|nforce|i3d|tefincom|nordvpn|expressvpn|surfshark|proton|mullvad|private internet access|cyberghost|ipvanish|windscribe|hide\.me|vpn|proxy|hosting|datacenter|data center|dedicated server|cloud/i;
 const encoder = new TextEncoder();
@@ -106,6 +107,22 @@ async function getModIds(context) {
   const blocked = new Set((library.blocked || []).map((item) => typeof item === "string" ? item : item?.id));
   return new Set((library.mods || []).map((mod) => mod?.id).filter((id) => typeof id === "string" && !blocked.has(id)));
 }
+
+async function getNewsIds(context) {
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const key = new Request(new URL("/cache/news-vote-feed", context.request.url));
+  let response = cache && await cache.match(key);
+  if (!response) {
+    const upstream = await fetch(NEWS_URL, { cf: { cacheTtl: 120 } });
+    if (!upstream.ok) throw new Error("News unavailable");
+    response = json(await upstream.json(), 200, "public, max-age=120");
+    if (cache) context.waitUntil(cache.put(key, response.clone()));
+  }
+  const feed = await response.json();
+  return new Set((feed.posts || []).map((post) => post?.id).filter((id) => typeof id === "string").map((id) => "news/" + id));
+}
+
+const voteTargetExists = async (context, id) => (id.startsWith("news/") ? getNewsIds(context) : getModIds(context)).then((ids) => ids.has(id));
 
 async function readBody(request) {
   if (Number(request.headers.get("Content-Length") || 0) > MAX_BODY || !request.body) return null;
@@ -233,7 +250,7 @@ export async function onRequestPost(context) {
     if (!body || typeof body.modId !== "string" || !MOD_ID.test(body.modId) || !Number.isInteger(body.vote) || ![-1, 0, 1].includes(body.vote)) {
       return fail(400, "Invalid request.");
     }
-    if (!(await getModIds(context)).has(body.modId)) return fail(404, "Mod not found.");
+    if (!(await voteTargetExists(context, body.modId))) return fail(404, "Not found.");
     if (!(await humanVerified(request, env, body.token))) return fail(403, "Verification failed. Please try again.");
     if (await globallyLimited(env, body.modId)) return fail(429, "Voting is busy right now. Please try again in a few minutes.");
     const write = body.vote === 0

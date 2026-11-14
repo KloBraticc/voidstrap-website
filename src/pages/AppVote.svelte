@@ -1,5 +1,5 @@
 <script>
-  const MOD_ID = /^[0-9]{1,20}\/[a-z0-9][a-z0-9._-]{0,99}$/i;
+  const MOD_ID = /^(?:[0-9]{1,20}\/[a-z0-9][a-z0-9._-]{0,99}|news\/[a-z0-9][a-z0-9-]{0,99})$/i;
   const params = new URLSearchParams(location.search);
   const done = location.pathname.replace(/\/+$/, "") === "/vote/done";
   const modId = params.get("mod") || "";
