@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "include": ["/api/mod-votes", "/api/featured", "/api/video", "/api/join", "/join", "/oembed"],
+  "exclude": []
+}
