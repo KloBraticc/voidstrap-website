@@ -17,7 +17,7 @@ const devApi = {
       const mod = await server.ssrLoadModule(`/functions${route}.js`);
       const handler = mod.onRequest || mod.onRequestGet;
       if (!handler) return next();
-      const out = await handler({ request: new Request(`http://localhost${req.url}`) }).catch(() => new Response("{}", { status: 502 }));
+      const out = await handler({ request: new Request(`http://localhost${req.url}`, { headers: req.headers.range ? { range: req.headers.range } : {} }) }).catch(() => new Response("{}", { status: 502 }));
       res.statusCode = out.status;
       out.headers.forEach((value, key) => res.setHeader(key, value));
       res.end(Buffer.from(await out.arrayBuffer()));

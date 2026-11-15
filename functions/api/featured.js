@@ -8,7 +8,7 @@ const json = (body, status = 200) =>
     }
   });
 
-const CACHE_KEY = "https://voidstrapp.pages.dev/cache/featured-v2.json";
+const CACHE_KEY = "https://voidstrapp.pages.dev/cache/featured-v3.json";
 const TTL_MS = 15 * 60000;
 let inflight = null;
 let memo = null;
@@ -36,34 +36,55 @@ async function clipUrl(id) {
   return url.protocol === "https:" && url.hostname === "fts.rbxcdn.com" ? url.href : null;
 }
 
+const ID = /^\d{1,20}$/;
+const SCAN = 40;
+const BATCH = 8;
+
+async function trailerId(game) {
+  const media = await getJson(`https://games.roblox.com/v2/games/${game.universeId}/media`).catch(() => null);
+  const clip = (media?.data || []).find((m) => m.assetType === "GamePreviewVideo" && m.approved && ID.test(String(m.videoId)));
+  return clip ? String(clip.videoId) : null;
+}
+
 async function build() {
   try {
     const sorts = await getJson(`https://apis.roblox.com/explore-api/v1/get-sorts?sessionId=${crypto.randomUUID()}`);
     const top = (sorts.sorts || []).find((s) => (s.sortId || "").includes("top-playing"));
-    const games = (top?.games || []).filter((g) => !/brookhaven/i.test(g.name)).slice(0, 8);
-    for (const game of games) {
-      if (!/^\d{1,20}$/.test(String(game.universeId)) || !/^\d{1,20}$/.test(String(game.rootPlaceId))) continue;
-      const media = await getJson(`https://games.roblox.com/v2/games/${game.universeId}/media`);
-      const clip = (media.data || []).find((m) => m.assetType === "GamePreviewVideo" && m.videoId && m.approved);
-      if (!clip || !/^\d{1,20}$/.test(String(clip.videoId))) continue;
-      const video = await clipUrl(clip.videoId).catch(() => null);
-      if (!video) continue;
-      const thumbs = await getJson(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${game.universeId}&size=768x432&format=Webp&countPerUniverse=1`);
-      const votes = game.totalUpVotes + game.totalDownVotes;
-      return json({
-        name: String(game.name || "").slice(0, 120),
-        players: Number(game.playerCount) || 0,
-        likes: votes ? Math.round((game.totalUpVotes / votes) * 100) : null,
-        url: `https://www.roblox.com/games/${game.rootPlaceId}`,
-        launch: `roblox://experiences/start?placeId=${game.rootPlaceId}`,
-        thumbnail: safeThumb(thumbs.data?.[0]?.thumbnails?.[0]?.imageUrl),
-        video
-      });
+    const games = (top?.games || [])
+      .filter((g) => !/brookhaven/i.test(g.name) && ID.test(String(g.universeId)) && ID.test(String(g.rootPlaceId)))
+      .sort((a, b) => (Number(b.playerCount) || 0) - (Number(a.playerCount) || 0))
+      .slice(0, SCAN);
+    for (let i = 0; i < games.length; i += BATCH) {
+      const batch = games.slice(i, i + BATCH);
+      const ids = await Promise.all(batch.map(trailerId));
+      for (let j = 0; j < batch.length; j++) {
+        if (!ids[j]) continue;
+        const game = batch[j];
+        const video = await clipUrl(ids[j]).catch(() => null);
+        if (!video) continue;
+        return respond(game, ids[j], video);
+      }
     }
     return json({ error: "no trailer" }, 404);
   } catch {
     return json({ error: "unavailable" }, 502);
   }
+}
+
+async function respond(game, videoId, video) {
+  const thumbs = await getJson(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${game.universeId}&size=768x432&format=Webp&countPerUniverse=1`).catch(() => null);
+  const up = Number(game.totalUpVotes) || 0;
+  const votes = up + (Number(game.totalDownVotes) || 0);
+  return json({
+    name: String(game.name || "").slice(0, 120),
+    players: Number(game.playerCount) || 0,
+    likes: votes ? Math.round((up / votes) * 100) : null,
+    url: `https://www.roblox.com/games/${game.rootPlaceId}`,
+    launch: `roblox://experiences/start?placeId=${game.rootPlaceId}`,
+    thumbnail: safeThumb(thumbs?.data?.[0]?.thumbnails?.[0]?.imageUrl),
+    videoId,
+    video
+  });
 }
 
 export async function getFeatured(context) {
